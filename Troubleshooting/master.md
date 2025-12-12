@@ -1,7 +1,7 @@
 # Troubleshooting Master Log
 
 ## Open Tickets
-- (none)
+- TKT-1007 [medium] 1007 - link status on allstar (subsystem: allstarq, opened: 2025-12-12)
 
 ## Closed Tickets
 - TKT-1000 [Low] 1000 (closed: 2025-12-11)

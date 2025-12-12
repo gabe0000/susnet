@@ -37,4 +37,9 @@
 - Open questions:
   - How to synchronize logging/time across both Pis (NTP? shared storage?).
   - Whether to share a UPS/power management system or keep them independent.
-  - Best place to host the web UI—voice Pi, data Pi, or both with load splitting.
+- Best place to host the web UI—voice Pi, data Pi, or both with load splitting.
+
+## Meshtastic channel/personalization notes
+- Channel controls desired: mute/solo for messaging and TTS per channel; default to hiding noisy public channels (e.g., NC Mesh).
+- Nicknames + notes for favorite nodes should appear in UI and be persisted (ideally server-side so TTS can use them).
+- Action items: add a small API for channel prefs and profiles; have listener honor mute/solo TTS flags and announce using nicknames.

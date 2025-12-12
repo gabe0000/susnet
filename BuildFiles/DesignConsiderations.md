@@ -7,6 +7,7 @@ Keep this document updated as requirements change. It should guide future hardwa
 2. Collect, normalize, and display APRS + Meshtastic data.
 3. Offer both browser-based and radio-based (DTMF/audio) control paths.
 4. Remain portable and reproducible so another builder can duplicate "the box."
+5. Support per-channel controls (mute/solo for messaging and TTS) and human-friendly nicknames/notes for Meshtastic nodes.
 
 ## Constraints
 - Power budget: optimized for Pi-class SBCs with UPS HAT support.
