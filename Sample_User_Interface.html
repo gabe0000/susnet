@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SusNet Ops Hub (Static Demo)</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    :root{
+      --bg:#0b0f17; --panel:#111827; --panel-2:#0f1420; --text:#e8eef9; --muted:#b7c3d9;
+      --accent:#38bdf8; --accent-2:#ff61e6; --warn:#fbbf24; --ok:#34d399; --err:#fb7185;
+      --glow:0 0 16px rgba(56,189,248,.55), 0 0 4px rgba(255,97,230,.35);
+      --radius:18px; --radius-sm:12px;
+    }
+    *{box-sizing:border-box}
+    body{margin:0; background:radial-gradient(1200px 1200px at 80% -10%, rgba(56,189,248,.08), transparent 60%),
+              radial-gradient(900px 900px at -10% 110%, rgba(255,97,230,.07), transparent 60%), var(--bg);
+      color:var(--text); font-family: system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Helvetica Neue,Arial,sans-serif; line-height:1.45; overflow-x:hidden;}
+    a{color:var(--accent); text-decoration:none}
+    header{display:flex; align-items:center; justify-content:space-between; gap:16px; padding:22px 22px 10px; flex-wrap:wrap}
+    .control-bar{display:flex; align-items:center; gap:14px; flex-wrap:wrap}
+    h1{margin:0; font-size:clamp(22px,2.8vw,30px); letter-spacing:.4px}
+    .sub{color:var(--muted); font-size:.95rem}
+    .wrap{max-width:1400px; margin:0 auto 36px; padding:0 18px}
+    .grid{display:grid; gap:18px;}
+    .two{grid-template-columns:1fr;} @media(min-width:1080px){ .two{grid-template-columns:1fr 1fr;} }
+    .panel{background:linear-gradient(180deg, rgba(56,189,248,.05), rgba(255,97,230,.05)), var(--panel);
+      border:1px solid rgba(232,238,249,.08); border-radius:var(--radius); padding:16px 16px 18px; box-shadow:var(--glow); min-width:0}
+    .panel h2{margin:0 0 8px; font-size:1.1rem; display:flex; align-items:center; gap:10px}
+    .panel-head{display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:6px}
+    .tag{font-size:.8rem; color:var(--muted)}
+    .row{display:flex; flex-wrap:wrap; gap:10px; align-items:center}
+    .row + .row{margin-top:10px}
+    .field{display:flex; align-items:center; gap:8px; background:var(--panel-2); border:1px solid rgba(232,238,249,.08); border-radius:var(--radius-sm); padding:8px 10px; min-width:0}
+    .field label{font-size:.8rem; color:var(--muted)}
+    .field input{all:unset; color:var(--text); font-variant-numeric:tabular-nums; width:120px}
+    .field select{all:unset; color:var(--text); font-variant-numeric:tabular-nums; width:140px}
+    .btn{appearance:none; border:none; border-radius:14px; padding:10px 14px; font-weight:600; letter-spacing:.2px; cursor:pointer; transition:transform .05s ease, box-shadow .2s ease, filter .2s ease; color:#031018}
+    .btn:active{transform:translateY(1px)} .btn:disabled{opacity:.55; cursor:not-allowed; filter:saturate(.4)}
+    .btn-cyan{background:linear-gradient(180deg,#67e8f9,#22d3ee); box-shadow:0 6px 24px rgba(34,211,238,.24)}
+    .btn-mag{background:linear-gradient(180deg,#f472f3,#e879f9); box-shadow:0 6px 24px rgba(232,121,249,.24)}
+    .btn-amb{background:linear-gradient(180deg,#facc15,#f59e0b); box-shadow:0 6px 24px rgba(245,158,11,.28)}
+    .btn-rose{background:linear-gradient(180deg,#fb7185,#f43f5e); box-shadow:0 6px 24px rgba(244,63,94,.28)}
+    .btn-gray{background:linear-gradient(180deg,#d1d5db,#9ca3af); color:#0b1220}
+    .switch{position:relative; display:inline-block; width:60px; height:30px}
+    .switch input{opacity:0; width:0; height:0}
+    .slider{position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0; background:var(--panel-2); border:1px solid rgba(232,238,249,.12); box-shadow:inset 0 0 6px rgba(0,0,0,.4); transition:.2s; border-radius:30px}
+    .slider:before{position:absolute; content:""; height:22px; width:22px; left:4px; bottom:3px; background:#d1d5db; box-shadow:0 3px 10px rgba(0,0,0,.35); transition:.2s; border-radius:50%}
+    .switch input:checked + .slider{background:linear-gradient(135deg,var(--accent),var(--accent-2)); box-shadow:var(--glow)}
+    .switch input:checked + .slider:before{transform:translateX(28px); background:#031018}
+    .split{height:1px; background:linear-gradient(90deg, rgba(56,189,248,.2), rgba(255,97,230,.2)); margin:12px 0}
+    .status{display:flex; align-items:center; gap:8px; font-variant-numeric:tabular-nums; color:var(--muted)}
+    .dot{width:10px; height:10px; border-radius:999px; box-shadow:0 0 0 2px rgba(232,238,249,.06) inset}
+    .dot.ok{background:var(--ok)} .dot.err{background:var(--err)} .dot.try{background:var(--warn)} .dot.paused{background:#9ca3af; box-shadow:0 0 0 2px rgba(232,238,249,.06) inset; opacity:.7}
+    .pill{font-size:.75rem; padding:4px 8px; border-radius:999px; border:1px solid rgba(232,238,249,.14); color:var(--muted)}
+    .log{background:var(--panel-2); border:1px solid rgba(232,238,249,.08); border-radius:var(--radius); padding:10px; font-family: ui-monospace, Menlo, Consolas, monospace; font-size:.9rem; max-height:240px; overflow:auto; min-width:0}
+    .log-entry{padding:6px 8px; border-bottom:1px solid rgba(232,238,249,.08); border-radius:10px}
+    .log-entry:last-child{border-bottom:none}
+    .log-entry .tag{color:var(--accent); margin-right:6px; font-weight:600}
+    .log-entry .ts{color:#8da1c2; margin-right:6px}
+    .log .ts{color:#8da1c2}
+    .fav-bar{display:flex; flex-wrap:wrap; gap:8px; margin-top:8px}
+    .fav{border:1px dashed rgba(232,238,249,.18); background:rgba(232,238,249,.04); color:var(--text); padding:8px 10px; border-radius:12px; cursor:pointer}
+    .map{height:420px; border:1px solid rgba(232,238,249,.08); border-radius:var(--radius); overflow:hidden}
+    .chips{display:flex; flex-wrap:wrap; gap:8px}
+    .chip{border:1px solid rgba(232,238,249,.16); background:rgba(232,238,249,.05); color:var(--text); padding:6px 10px; border-radius:999px; cursor:pointer; font-size:.85rem}
+    .chip.active{border-color:var(--accent); box-shadow:var(--glow)}
+    .pill-btn{border:1px solid rgba(232,238,249,.16); background:rgba(232,238,249,.06); color:var(--text); padding:8px 12px; border-radius:12px; cursor:pointer}
+    .panel-ghost{background:var(--panel-2); border:1px dashed rgba(232,238,249,.12); border-radius:var(--radius); padding:12px; margin-top:10px}
+    .modal{position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,.55); display:none; align-items:center; justify-content:center; z-index:30; padding:20px}
+    .modal.show{display:flex}
+    .modal .box{background:var(--panel); border:1px solid rgba(232,238,249,.12); border-radius:18px; padding:16px; max-width:600px; width:100%; max-height:90vh; overflow:auto; box-shadow:var(--glow)}
+    body.modal-open{overflow:hidden}
+    footer{margin-top:18px; color:var(--muted); font-size:.85rem}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <h1>SusNet Ops Hub</h1>
+        <div class="sub">Static demo mirror of the live ops UI (no backend calls).</div>
+      </div>
+      <div class="control-bar">
+        <div class="status"><span class="dot ok"></span><span>Static preview</span></div>
+        <div class="status" style="gap:6px">
+          <span class="tag">Low power</span>
+          <label class="switch">
+            <input type="checkbox" checked aria-label="Toggle low power mode (demo only)">
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+    </header>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>AllStar / GMRS Nodes</h2>
+        <div class="row">
+          <button class="btn btn-gray" disabled>Refresh List</button>
+          <span class="tag">Source: allmon3.ini (demo data)</span>
+        </div>
+      </div>
+      <div id="nodeGrid" class="grid two"></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>DVSwitch Mode Switcher</h2>
+        <div class="row">
+          <button class="btn btn-amb" disabled>Refresh Modes</button>
+          <div class="status"><span class="dot ok"></span><span>Idle</span></div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Mode</label><select id="modeSelect"></select></div>
+        <div class="field" style="flex:1 1 auto"><label>Talkgroup</label><select id="tgSelect" style="all:unset; color:var(--text); width:100%"></select></div>
+        <button class="btn btn-cyan" disabled>Set</button>
+        <button class="btn btn-mag" disabled>Add Favorite</button>
+      </div>
+      <div class="fav-bar" id="modeFavs"></div>
+      <div class="log" id="modeLog" style="margin-top:10px"></div>
+    </section>
+
+    <div class="grid two" style="margin-top:18px">
+      <section class="panel">
+        <div class="panel-head"><h2>APRS</h2><span class="tag">Callsign: DEMO-1</span></div>
+        <div class="row">
+          <div class="field" style="flex:1 1 auto"><label>Filter</label><input placeholder="Search text" disabled /></div>
+          <button class="btn btn-gray" disabled>Refresh</button>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <div class="field" style="flex:1 1 120px"><label>Watch</label><input placeholder="W4VDX" disabled /></div>
+          <div class="field" style="flex:1 1 120px"><label>ZIP</label><input placeholder="28001" disabled /></div>
+          <div class="field" style="flex:1 1 120px"><label>Radius (mi)</label><input placeholder="100" disabled /></div>
+          <button class="btn btn-mag" disabled>Save</button>
+          <span class="tag">Filter: watch W4VDX, 100mi</span>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <div class="field" style="flex:2 1 auto"><label>Send to</label><input placeholder="CALL or CALL-SSID" disabled /></div>
+          <div class="field" style="flex:3 1 auto"><label>Message</label><input placeholder="Text" disabled /></div>
+          <button class="btn btn-cyan" disabled>Send</button>
+        </div>
+        <div class="split"></div>
+        <div class="log" id="aprsLog"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head"><h2>Meshtastic</h2><span class="tag">USB CLI (demo)</span></div>
+        <div class="row">
+          <button class="btn btn-amb" disabled>Refresh</button>
+          <div class="field"><label>Node</label><select id="meshNode" style="all:unset; color:var(--text)"></select></div>
+          <div class="field"><label>Channel</label><select id="meshChannel" style="all:unset; color:var(--text)"></select></div>
+          <button class="btn btn-gray" disabled>Connect</button>
+          <button class="btn btn-rose" disabled>Disconnect</button>
+        </div>
+        <div class="chips" style="margin-top:10px">
+          <div class="chip active">Favorites</div>
+          <div class="chip">MQTT</div>
+          <div class="chip">RF only</div>
+          <div class="chip">Stale (&gt;36h)</div>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <div class="field" style="flex:2 1 auto"><label>Dest (optional)</label><input placeholder="node" disabled /></div>
+          <div class="field" style="flex:3 1 auto"><label>Message</label><input placeholder="Text" disabled /></div>
+          <button class="btn btn-cyan" disabled>Send</button>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <button class="btn btn-mag" disabled>★ Favorite</button>
+          <button class="btn btn-gray" disabled>Open DM Thread</button>
+          <button class="btn btn-gray" disabled>Show Stats</button>
+        </div>
+        <div class="split"></div>
+        <div class="tag">Messages</div>
+        <div class="log" id="meshMessages"></div>
+        <div class="split"></div>
+        <div class="tag">Telemetry</div>
+        <div class="log" id="meshTelemetry"></div>
+      </section>
+    </div>
+
+    <section class="panel" style="margin-top:18px">
+      <div class="panel-head"><h2>Map</h2><div class="row"><button class="btn btn-gray" disabled>Refresh</button><span class="tag">Pins: favorites, APRS, Meshtastic</span></div></div>
+      <div id="map" class="map" aria-label="Activity map"></div>
+    </section>
+
+    <section class="panel" style="margin-top:18px">
+      <div class="panel-head">
+        <h2>Support / Troubleshooting</h2>
+        <div class="row">
+          <button class="btn btn-cyan" id="ticketNewBtn">Create Support Ticket</button>
+          <button class="btn btn-gray" id="ticketRefreshBtn">View Open Tickets</button>
+        </div>
+      </div>
+      <div class="log" id="ticketList"><span class="tag">Click "View Open Tickets" to load (demo)</span></div>
+    </section>
+
+    <section class="panel" style="margin-top:18px">
+      <h2>Event Log</h2>
+      <div id="log" class="log" aria-live="polite"></div>
+      <div class="row" style="margin-top:8px"><button class="btn btn-gray" disabled>Clear Log</button></div>
+    </section>
+
+    <footer>
+      Static preview. No backend calls or credentials here.
+    </footer>
+  </div>
+
+  <div class="modal" id="ticketModal">
+    <div class="box">
+      <h3 style="margin-top:0">Create Support Ticket (Demo)</h3>
+      <div class="row" style="flex-direction:column; gap:10px">
+        <div class="field" style="width:100%"><label style="width:110px">Title</label><input id="ticketTitle" placeholder="Brief issue summary" style="width:100%" /></div>
+        <div class="field" style="width:100%"><label style="width:110px">Subsystem</label>
+          <select id="ticketSubsystem" style="width:100%">
+            <option value="">Select</option>
+            <option>AllStar</option>
+            <option>DVSwitch</option>
+            <option>APRS</option>
+            <option>Meshtastic</option>
+            <option>UI</option>
+            <option>Support</option>
+            <option>Network</option>
+            <option>Power/UPS</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div class="field" style="width:100%"><label style="width:110px">Severity</label>
+          <select id="ticketSeverity" style="width:100%">
+            <option value="low">Low</option>
+            <option value="medium" selected>Medium</option>
+            <option value="high">High</option>
+            <option value="critical">Critical</option>
+          </select>
+        </div>
+        <div class="field" style="width:100%; align-items:flex-start"><label style="width:110px; padding-top:6px">Description</label><textarea id="ticketDesc" placeholder="Symptoms, steps, expectations" rows="4" style="width:100%; all:unset; color:var(--text); line-height:1.3; font-size:.95rem; min-height:60px"></textarea></div>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <button class="btn btn-cyan" id="ticketSubmit">Submit (demo)</button>
+        <button class="btn btn-gray" id="ticketCancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const demo = {
+      nodes: [
+        { id: 66190, host: 'susnet.local', links: ['531121', '12345'] },
+        { id: 531121, host: 'gmrs-hub.local', links: [] },
+      ],
+      modes: [
+        { name: 'DMR', talkgroups: [{ alias:'TG 310', tgid:'310'},{alias:'TG 93', tgid:'93'}]},
+        { name: 'YSF', talkgroups: [{ alias:'America Link', tgid:'21080'}]},
+      ],
+      modeFavs: {
+        DMR: [{ id:'DMR:310', label:'TG 310' }],
+        YSF: []
+      },
+      aprs: [
+        '[2025-12-11 14:32] KJ4XYZ>APRS: /3500.00N/07900.00W Test beacon via SUSNET',
+        '[2025-12-11 14:31] W4VDX>APRS: Hello mesh side',
+        '[2025-12-11 14:28] WXNOW>APRS: Temp 48F Wind 2mph'
+      ],
+      meshMessages: [
+        { from:'Rover-1', channel:'Primary', text:'Node check ok', timestamp: Date.now()-1000*60*3 },
+        { from:'Base', channel:'MQTT', text:'Weather feed updated', timestamp: Date.now()-1000*60*8 },
+      ],
+      meshTelemetry: [
+        '2025-12-11 Battery 87%',
+        '2025-12-11 Temp 34C'
+      ],
+      meshChannels: ['Primary','MQTT'],
+      mapPoints: [
+        { lat:35.5, lon:-79.2, label:'Home QTH', source:'favorite', id:'home' },
+        { lat:35.1, lon:-78.9, label:'APRS Rover', source:'aprs', id:'rover' },
+        { lat:35.8, lon:-79.5, label:'Mesh Node', source:'mesh', id:'mesh-1' }
+      ],
+      tickets: [
+        { id:'TKT-1007', severity:'High', subsystem:'UI', title:'Mobile layout polish', date_opened:'2025-12-12' },
+        { id:'TKT-1008', severity:'Medium', subsystem:'Support', title:'Modal focus/scroll check', date_opened:'2025-12-12' },
+      ]
+    };
+
+    const $ = (s, el=document) => el.querySelector(s);
+    const state = { map:null, mapLayer:null, tickets:{ open:[], loaded:false } };
+
+    function addLogLine(msg){
+      const box = $('#log'); if(!box) return;
+      const div = document.createElement('div');
+      div.className = 'log-entry';
+      div.innerHTML = `<span class="ts">[demo]</span> ${msg}`;
+      box.prepend(div);
+      while(box.children.length > 200){ box.removeChild(box.lastChild); }
+    }
+
+    function renderNodes(){
+      const grid = $('#nodeGrid');
+      grid.innerHTML = '';
+      demo.nodes.forEach(n=>{
+        const card=document.createElement('div'); card.className='panel'; card.innerHTML=`
+          <div class="panel-head"><div class="row" style="gap:8px"><h3 style="margin:0">Node ${n.id}</h3><span class="pill">${n.host}</span></div>
+            <div class="status"><span class="dot ${n.links.length?'ok':'err'}"></span><span>${n.links.length? 'Linked: '+n.links.join(', ') : 'No links'}</span></div>
+          </div>
+          <div class="row"><div class="field" style="flex:1 1 auto"><label>Target</label><input placeholder="Node number" disabled /></div>
+            <button class="btn btn-cyan" disabled>Connect (perm)</button>
+            <button class="btn btn-rose" disabled>Disconnect All</button>
+          </div>
+          <div class="row"><button class="btn btn-mag" disabled>Add Favorite</button><button class="btn btn-amb" disabled>Status</button></div>
+          <div class="fav-bar"><span class="tag">Demo favorites shown in live system</span></div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    function renderModes(){
+      const modeSel=$('#modeSelect'); const tgSel=$('#tgSelect');
+      modeSel.innerHTML=''; tgSel.innerHTML='';
+      demo.modes.forEach(m=>{
+        const opt=document.createElement('option'); opt.value=m.name; opt.textContent=m.name; modeSel.appendChild(opt);
+      });
+      const first = demo.modes[0];
+      if(first){
+        first.talkgroups.forEach(tg=>{
+          const opt=document.createElement('option'); opt.value=tg.tgid; opt.textContent=`${tg.alias} (${tg.tgid})`; tgSel.appendChild(opt);
+        });
+        renderModeFavs(first.name);
+      }
+      modeSel.onchange = ()=>{
+        const mode = modeSel.value;
+        const found = demo.modes.find(m=>m.name===mode);
+        tgSel.innerHTML='';
+        (found?.talkgroups||[]).forEach(tg=>{
+          const opt=document.createElement('option'); opt.value=tg.tgid; opt.textContent=`${tg.alias} (${tg.tgid})`; tgSel.appendChild(opt);
+        });
+        renderModeFavs(mode);
+      };
+      $('#modeLog').innerHTML = demo.modes.map(m=>`<div class="log-entry"><span class="ts">[demo]</span> ${m.name} ready (favorites stored per mode)</div>`).join('');
+    }
+
+    function renderModeFavs(modeName){
+      const bar = $('#modeFavs'); if(!bar) return;
+      const favs = (demo.modeFavs[modeName]||[]);
+      bar.innerHTML = favs.length ? favs.map(f=>`<button class="fav" disabled>${f.label||f.id}</button>`).join('') : '<span class="tag">No favorites yet for this mode (demo)</span>';
+    }
+
+    function renderAprs(){
+      $('#aprsLog').innerHTML = demo.aprs.map(line=>`<div class="log-entry">${line}</div>`).join('');
+    }
+
+    function renderMesh(){
+      const nodeSel=$('#meshNode'); const chSel=$('#meshChannel');
+      nodeSel.innerHTML=''; chSel.innerHTML='';
+      demo.meshMessages.forEach(m=>{
+        const opt=document.createElement('option'); opt.value=m.from; opt.textContent=m.from; nodeSel.appendChild(opt);
+      });
+      demo.meshChannels.forEach(ch=>{ const opt=document.createElement('option'); opt.value=ch; opt.textContent=ch; chSel.appendChild(opt); });
+      $('#meshMessages').innerHTML = demo.meshMessages.map(m=>{
+        const ts=new Date(m.timestamp).toLocaleTimeString();
+        return `<div class="log-entry"><div class="row" style="gap:8px; align-items:center; margin-bottom:4px"><span class="pill">${m.channel}</span><span class="pill">${m.from}</span></div><div class="ts">${ts}</div><div>${m.text}</div></div>`;
+      }).join('');
+      $('#meshTelemetry').innerHTML = demo.meshTelemetry.map(t=>`<div class="log-entry">${t}</div>`).join('');
+    }
+
+    // Support tickets (demo)
+    function showTicketModal(){ const m=$('#ticketModal'); if(m){ m.classList.add('show'); document.body.classList.add('modal-open'); setTimeout(()=>$('#ticketTitle')?.focus(), 30);} }
+    function hideTicketModal(){ const m=$('#ticketModal'); if(m){ m.classList.remove('show'); document.body.classList.remove('modal-open'); } }
+    function renderTickets(){
+      const box = $('#ticketList'); if(!box) return;
+      if(!state.tickets.loaded){ box.innerHTML = '<span class="tag">Click "View Open Tickets" to load (demo)</span>'; return; }
+      const tickets = state.tickets.open||[];
+      if(!tickets.length){ box.innerHTML = '<span class="tag">No open tickets (demo)</span>'; return; }
+      box.innerHTML = tickets.map(t=>{
+        const sev = t.severity||''; const sub = t.subsystem||''; const title = t.title||''; const opened = t.date_opened||''; const id = t.id||'';
+        return `<div class="log-entry">
+          <div class="row" style="gap:8px; align-items:center; margin-bottom:4px">
+            <span class="pill">${id}</span><span class="pill">${sev}</span><span class="pill">${sub}</span><span class="tag">${opened}</span>
+          </div>
+          <div>${title}</div>
+          <div class="row" style="margin-top:6px">
+            <button class="btn btn-rose" disabled>Close (demo)</button>
+          </div>
+        </div>`;
+      }).join('');
+    }
+    function loadTicketsDemo(){ state.tickets.open = demo.tickets.slice(); state.tickets.loaded = true; renderTickets(); addLogLine('Loaded demo tickets'); }
+    function createTicketDemo(){
+      const title = ($('#ticketTitle')?.value||'').trim();
+      const subsystem = ($('#ticketSubsystem')?.value||'').trim() || 'Other';
+      const severity = ($('#ticketSeverity')?.value||'').trim() || 'Medium';
+      const desc = ($('#ticketDesc')?.value||'').trim();
+      if(!title || !desc){ addLogLine('Demo ticket requires title/description'); return; }
+      const id = `TKT-${1000 + state.tickets.open.length + 1}`;
+      const opened = new Date().toISOString().slice(0,10);
+      state.tickets.open.unshift({ id, severity, subsystem, title, date_opened: opened });
+      state.tickets.loaded = true;
+      renderTickets();
+      hideTicketModal();
+      addLogLine(`Demo ticket created: ${title}`);
+      if($('#ticketTitle')) $('#ticketTitle').value='';
+      if($('#ticketSubsystem')) $('#ticketSubsystem').value='';
+      if($('#ticketSeverity')) $('#ticketSeverity').value='medium';
+      if($('#ticketDesc')) $('#ticketDesc').value='';
+    }
+
+    function renderLog(){
+      $('#log').innerHTML = [
+        '<div class="log-entry"><span class="ts">[demo]</span> Static view loaded</div>',
+        '<div class="log-entry"><span class="ts">[demo]</span> Backend actions disabled</div>'
+      ].join('');
+    }
+
+    function initMap(){
+      if(typeof L === 'undefined'){ return; }
+      state.map = L.map('map',{zoomControl:true}).setView([35.0,-79.0],7);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; OSM'}).addTo(state.map);
+      state.mapLayer = L.layerGroup().addTo(state.map);
+      const points=demo.mapPoints||[];
+      points.forEach(p=>{
+        const color = p.source==='aprs' ? '#38bdf8' : (p.source==='favorite' ? '#34d399' : '#ff61e6');
+        const circle=L.circleMarker([p.lat,p.lon],{radius:8,color,fillColor:color,fillOpacity:0.6});
+        circle.bindPopup(`<b>${p.label||p.id||'Item'}</b><br>${p.source}`);
+        state.mapLayer.addLayer(circle);
+      });
+      if(points.length){ state.map.fitBounds(points.map(p=>[p.lat,p.lon]),{padding:[20,20], maxZoom:10}); }
+    }
+
+    (function init(){
+      renderNodes();
+      renderModes();
+      renderAprs();
+      renderMesh();
+      renderLog();
+      initMap();
+      // Wire support demo
+      const newBtn = $('#ticketNewBtn'); if(newBtn) newBtn.onclick = showTicketModal;
+      const cancelBtn = $('#ticketCancel'); if(cancelBtn) cancelBtn.onclick = hideTicketModal;
+      const submitBtn = $('#ticketSubmit'); if(submitBtn) submitBtn.onclick = createTicketDemo;
+      const refreshBtn = $('#ticketRefreshBtn'); if(refreshBtn) refreshBtn.onclick = loadTicketsDemo;
+    })();
+  </script>
+</body>
+</html>
