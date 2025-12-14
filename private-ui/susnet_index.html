@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SusNet Ops Hub</title>
+  <link rel="stylesheet" href="/susnet/vendor/leaflet/leaflet.css" />
+  <style>
+    :root{
+      --bg:#0b0f17; --panel:#111827; --panel-2:#0f1420; --text:#e8eef9; --muted:#b7c3d9;
+      --accent:#38bdf8; --accent-2:#ff61e6; --warn:#fbbf24; --ok:#34d399; --err:#fb7185;
+      --glow:0 0 16px rgba(56,189,248,.55), 0 0 4px rgba(255,97,230,.35);
+      --radius:18px; --radius-sm:12px;
+    }
+    *{box-sizing:border-box}
+    body{margin:0; background:radial-gradient(1200px 1200px at 80% -10%, rgba(56,189,248,.08), transparent 60%),
+              radial-gradient(900px 900px at -10% 110%, rgba(255,97,230,.07), transparent 60%), var(--bg);
+      color:var(--text); font-family: system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Helvetica Neue,Arial,sans-serif; line-height:1.45; overflow-x:hidden;}
+    a{color:var(--accent); text-decoration:none}
+    header{display:flex; align-items:center; justify-content:space-between; gap:16px; padding:22px 22px 10px; flex-wrap:wrap}
+    .control-bar{display:flex; align-items:center; gap:14px; flex-wrap:wrap}
+    h1{margin:0; font-size:clamp(22px,2.8vw,30px); letter-spacing:.4px}
+    .sub{color:var(--muted); font-size:.95rem}
+    .wrap{max-width:1400px; margin:0 auto 36px; padding:0 18px}
+    .grid{display:grid; gap:18px;}
+    .two{grid-template-columns:1fr;} @media(min-width:1080px){ .two{grid-template-columns:1fr 1fr;} }
+    .three{grid-template-columns:1fr;} @media(min-width:1200px){ .three{grid-template-columns:repeat(3,1fr);} }
+    .panel{background:linear-gradient(180deg, rgba(56,189,248,.05), rgba(255,97,230,.05)), var(--panel);
+      border:1px solid rgba(232,238,249,.08); border-radius:var(--radius); padding:16px 16px 18px; box-shadow:var(--glow); min-width:0}
+    .panel h2{margin:0 0 8px; font-size:1.1rem; display:flex; align-items:center; gap:10px}
+    .panel-head{display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:6px}
+    .tag{font-size:.8rem; color:var(--muted)}
+    .row{display:flex; flex-wrap:wrap; gap:10px; align-items:center}
+    .row + .row{margin-top:10px}
+    .field{display:flex; align-items:center; gap:8px; background:var(--panel-2); border:1px solid rgba(232,238,249,.08); border-radius:var(--radius-sm); padding:8px 10px; min-width:0}
+    .field label{font-size:.8rem; color:var(--muted)}
+    .field input{all:unset; color:var(--text); font-variant-numeric:tabular-nums; width:120px}
+    .field select{all:unset; color:var(--text); font-variant-numeric:tabular-nums; width:140px}
+    .field textarea{all:unset; color:var(--text); width:100%; line-height:1.3; font-size:.95rem; resize:vertical; min-height:60px}
+    .btn{appearance:none; border:none; border-radius:14px; padding:10px 14px; font-weight:600; letter-spacing:.2px; cursor:pointer; transition:transform .05s ease, box-shadow .2s ease, filter .2s ease; color:#031018}
+    .btn:active{transform:translateY(1px)} .btn:disabled{opacity:.55; cursor:not-allowed; filter:saturate(.4)}
+    .btn-cyan{background:linear-gradient(180deg,#67e8f9,#22d3ee); box-shadow:0 6px 24px rgba(34,211,238,.24)}
+    .btn-mag{background:linear-gradient(180deg,#f472f3,#e879f9); box-shadow:0 6px 24px rgba(232,121,249,.24)}
+    .btn-amb{background:linear-gradient(180deg,#facc15,#f59e0b); box-shadow:0 6px 24px rgba(245,158,11,.28)}
+    .btn-rose{background:linear-gradient(180deg,#fb7185,#f43f5e); box-shadow:0 6px 24px rgba(244,63,94,.28)}
+    .btn-gray{background:linear-gradient(180deg,#d1d5db,#9ca3af); color:#0b1220}
+    .switch{position:relative; display:inline-block; width:60px; height:30px}
+    .switch input{opacity:0; width:0; height:0}
+    .slider{position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0; background:var(--panel-2); border:1px solid rgba(232,238,249,.12); box-shadow:inset 0 0 6px rgba(0,0,0,.4); transition:.2s; border-radius:30px}
+    .slider:before{position:absolute; content:""; height:22px; width:22px; left:4px; bottom:3px; background:#d1d5db; box-shadow:0 3px 10px rgba(0,0,0,.35); transition:.2s; border-radius:50%}
+    .switch input:checked + .slider{background:linear-gradient(135deg,var(--accent),var(--accent-2)); box-shadow:var(--glow)}
+    .switch input:checked + .slider:before{transform:translateX(28px); background:#031018}
+    .split{height:1px; background:linear-gradient(90deg, rgba(56,189,248,.2), rgba(255,97,230,.2)); margin:12px 0}
+    .status{display:flex; align-items:center; gap:8px; font-variant-numeric:tabular-nums; color:var(--muted)}
+    .dot{width:10px; height:10px; border-radius:999px; box-shadow:0 0 0 2px rgba(232,238,249,.06) inset}
+    .dot.ok{background:var(--ok)} .dot.err{background:var(--err)} .dot.try{background:var(--warn)} .dot.paused{background:#9ca3af; box-shadow:0 0 0 2px rgba(232,238,249,.06) inset; opacity:.7}
+    .pill{font-size:.75rem; padding:4px 8px; border-radius:999px; border:1px solid rgba(232,238,249,.14); color:var(--muted)}
+    .log{background:var(--panel-2); border:1px solid rgba(232,238,249,.08); border-radius:var(--radius); padding:10px; font-family: ui-monospace, Menlo, Consolas, monospace; font-size:.9rem; max-height:240px; overflow:auto; min-width:0}
+    .log-entry{padding:6px 8px; border-bottom:1px solid rgba(232,238,249,.08); border-radius:10px}
+    .log-entry:last-child{border-bottom:none}
+    .log-entry .tag{color:var(--accent); margin-right:6px; font-weight:600}
+    .log-entry .ts{color:#8da1c2; margin-right:6px}
+    .log .ts{color:#8da1c2}
+    .fav-bar{display:flex; flex-wrap:wrap; gap:8px; margin-top:8px}
+    .fav{border:1px dashed rgba(232,238,249,.18); background:rgba(232,238,249,.04); color:var(--text); padding:8px 10px; border-radius:12px; cursor:pointer}
+    .fav:hover{border-style:solid; border-color:rgba(56,189,248,.45)}
+    .map{height:420px; border:1px solid rgba(232,238,249,.08); border-radius:var(--radius); overflow:hidden}
+    .chips{display:flex; flex-wrap:wrap; gap:8px}
+    .chip{border:1px solid rgba(232,238,249,.16); background:rgba(232,238,249,.05); color:var(--text); padding:6px 10px; border-radius:999px; cursor:pointer; font-size:.85rem}
+    .chip.active{border-color:var(--accent); box-shadow:var(--glow)}
+    .pill-btn{border:1px solid rgba(232,238,249,.16); background:rgba(232,238,249,.06); color:var(--text); padding:8px 12px; border-radius:12px; cursor:pointer}
+    .panel-ghost{background:var(--panel-2); border:1px dashed rgba(232,238,249,.12); border-radius:var(--radius); padding:12px; margin-top:10px}
+    .modal{position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,.55); display:none; align-items:center; justify-content:center; z-index:30; padding:20px}
+    .modal.show{display:flex}
+    .modal .box{background:var(--panel); border:1px solid rgba(232,238,249,.12); border-radius:18px; padding:16px; max-width:600px; width:100%; max-height:90vh; overflow:auto; box-shadow:var(--glow)}
+    body.modal-open{overflow:hidden}
+    footer{margin-top:18px; color:var(--muted); font-size:.85rem}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <h1>SusNet Ops Hub</h1>
+        <div class="sub">Dynamic AllStar/GMRS control, DVSwitch, APRS, Meshtastic, and map overlays.</div>
+      </div>
+      <div class="control-bar">
+        <div class="status"><span class="dot try" id="apiDot"></span><span id="apiText">Checking API…</span></div>
+        <div class="status" style="gap:6px">
+          <span class="tag">Low power</span>
+          <label class="switch">
+            <input type="checkbox" id="lowPowerSwitch" aria-label="Toggle low power mode">
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+    </header>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>AllStar / GMRS Nodes</h2>
+        <div class="row">
+          <button class="btn btn-gray" id="refreshNodes">Refresh List</button>
+          <span class="tag">Source: allmon3.ini</span>
+          <label class="tag" style="display:flex; align-items:center; gap:6px"><input type="checkbox" id="disconnectToggle" checked> Disconnect first</label>
+          <span class="tag">Tap = fill, long-press = connect</span>
+        </div>
+      </div>
+      <div id="nodeGrid" class="grid two"></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>DVSwitch Mode Switcher</h2>
+        <div class="row">
+          <button class="btn btn-amb" id="refreshModes">Refresh Modes</button>
+          <div class="status"><span class="dot try" id="modeDot"></span><span id="modeText">Unknown</span></div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Mode</label><select id="modeSelect"></select></div>
+        <div class="field" style="flex:1 1 auto"><label>Talkgroup</label><select id="tgSelect" style="all:unset; color:var(--text); width:100%"></select></div>
+        <button class="btn btn-cyan" id="setMode">Set</button>
+        <button class="btn btn-mag" id="addModeFav">Add Favorite</button>
+      </div>
+      <div class="fav-bar" id="modeFavs"></div>
+      <div class="log" id="modeLog" style="margin-top:10px"></div>
+    </section>
+
+    <div class="grid two" style="margin-top:18px">
+      <section class="panel">
+        <div class="panel-head"><h2>APRS</h2><span class="tag" id="aprsTag">Callsign: —</span></div>
+        <div class="row">
+          <div class="field" style="flex:1 1 auto"><label>Filter</label><input id="aprsFilter" placeholder="Search text" /></div>
+          <button class="btn btn-gray" id="aprsRefresh">Refresh</button>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <div class="field" style="flex:1 1 120px"><label>Watch</label><input id="aprsWatch" placeholder="W4VDX" /></div>
+          <div class="field" style="flex:1 1 120px"><label>ZIP</label><input id="aprsZip" placeholder="28001" inputmode="numeric" /></div>
+          <div class="field" style="flex:1 1 120px"><label>Radius (mi)</label><input id="aprsRadius" placeholder="100" inputmode="numeric" /></div>
+          <button class="btn btn-mag" id="aprsSaveCfg">Save</button>
+          <span class="tag" id="aprsFilterTag">Filter: —</span>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <div class="field" style="flex:2 1 auto"><label>Send to</label><input id="aprsTo" placeholder="CALL or CALL-SSID" /></div>
+          <div class="field" style="flex:3 1 auto"><label>Message</label><input id="aprsMsg" placeholder="Text" /></div>
+          <button class="btn btn-cyan" id="aprsSend">Send</button>
+        </div>
+        <div class="split"></div>
+        <div class="log" id="aprsLog"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Meshtastic</h2><span class="tag" id="meshStatusTag">Messages: —</span>
+          <div class="row">
+            <button class="btn btn-amb" id="meshRefresh">Refresh</button>
+            <button class="btn btn-gray" id="meshAttach">Connect</button>
+            <button class="btn btn-rose" id="meshDetach">Disconnect</button>
+          </div>
+        </div>
+
+        <div class="row" style="flex-wrap:wrap; gap:10px">
+          <div class="chips" id="meshChannelChips" style="flex:1 1 auto"></div>
+          <div class="field" style="flex:1 1 220px"><label>Search</label><input id="meshSearch" placeholder="text or callsign" /></div>
+        </div>
+        <div class="chips" id="meshFilterChips" style="margin-top:8px">
+          <div class="chip" data-mesh-filter="dm">DM only</div>
+          <div class="chip" data-mesh-filter="mqtt">MQTT only</div>
+          <div class="chip" data-mesh-filter="rf">RF only</div>
+          <div class="chip active" data-mesh-filter="ncmesh">Hide NC Mesh</div>
+        </div>
+        <div class="row" style="margin-top:10px">
+          <div class="field" style="flex:2 1 auto"><label>Dest (optional)</label><input id="meshTo" placeholder="node" /></div>
+          <div class="field" style="flex:1 1 160px"><label>Channel</label><select id="meshSendChannel" style="all:unset; color:var(--text); width:100%"></select></div>
+          <div class="field" style="flex:3 1 auto"><label>Message</label><input id="meshMsg" placeholder="Text" /></div>
+          <button class="btn btn-cyan" id="meshSend">Send</button>
+        </div>
+        <div class="row" style="gap:10px; margin-top:6px">
+          <span class="tag" id="meshFilterSummary">Filter: all channels</span>
+          <span class="tag">Send channel = dropdown above (blank = default)</span>
+        </div>
+        <div class="split"></div>
+        <div class="tag">Messages</div>
+        <div class="log" id="meshMessages" style="max-height:340px"></div>
+        <div class="split"></div>
+      <div class="tag">Telemetry</div>
+      <div class="log" id="meshTelemetry"></div>
+      <div class="split"></div>
+      <div class="tag">Favorites & Profiles</div>
+      <div id="meshProfiles" class="grid two"></div>
+      </section>
+    </div>
+
+    <section class="panel" style="margin-top:18px">
+      <div class="panel-head"><h2>Map</h2><div class="row"><button class="btn btn-gray" id="mapRefresh">Refresh</button><span class="tag">Pins: favorites, APRS, Meshtastic</span></div></div>
+      <div id="map" class="map" aria-label="Activity map"></div>
+    </section>
+
+    <section class="panel" style="margin-top:18px">
+      <div class="panel-head">
+        <h2>Send TTS</h2>
+        <span class="tag">Default node 66190</span>
+      </div>
+      <div class="row" style="flex-direction:column; gap:10px">
+        <div class="field" style="width:100%"><label style="width:110px">Text</label><textarea id="ttsText" rows="3" placeholder="What should be spoken?" style="width:100%"></textarea></div>
+        <div class="field" style="width:100%"><label style="width:110px">Node (optional)</label><input id="ttsNode" inputmode="numeric" placeholder="66190" style="width:100%" /></div>
+        <div class="row" style="gap:10px"><button class="btn btn-cyan" id="ttsSendBtn">Send TTS</button><span class="tag">Speaks via AllStar</span></div>
+      </div>
+    </section>
+
+    <section class="panel" style="margin-top:18px">
+      <div class="panel-head">
+        <h2>Support / Troubleshooting</h2>
+        <div class="row">
+          <button class="btn btn-cyan" id="ticketNewBtn">Create Support Ticket</button>
+          <button class="btn btn-gray" id="ticketRefreshBtn">View Open Tickets</button>
+        </div>
+      </div>
+      <div class="log" id="ticketList"><span class="tag">Click "View Open Tickets" to load</span></div>
+    </section>
+
+    <section class="panel" style="margin-top:18px">
+      <h2>Event Log</h2>
+      <div id="log" class="log" aria-live="polite"></div>
+      <div class="row" style="margin-top:8px"><button class="btn btn-gray" id="clearLog">Clear Log</button></div>
+    </section>
+
+    <footer>
+      Written by Gabe (W4VDX). Tech scaffolding & UI authored with help from ChatGPT (GPT‑5 Thinking). No DTMF leakage; backend uses Asterisk CLI/AMI. Future: phonebook + RepeaterBook import.
+    </footer>
+  </div>
+
+  <div class="modal" id="ticketModal">
+    <div class="box">
+      <h3 style="margin-top:0">Create Support Ticket</h3>
+      <div class="row" style="flex-direction:column; gap:10px">
+        <div class="field" style="width:100%"><label style="width:110px">Title</label><input id="ticketTitle" placeholder="Brief issue summary" style="width:100%" /></div>
+        <div class="field" style="width:100%"><label style="width:110px">Subsystem</label>
+          <select id="ticketSubsystem" style="width:100%">
+            <option value="">Select</option>
+            <option>AllStar</option>
+            <option>DVSwitch</option>
+            <option>APRS</option>
+            <option>Meshtastic</option>
+            <option>UI</option>
+            <option>Support</option>
+            <option>Network</option>
+            <option>Power/UPS</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div class="field" style="width:100%"><label style="width:110px">Severity</label>
+          <select id="ticketSeverity" style="width:100%">
+            <option value="low">Low</option>
+            <option value="medium" selected>Medium</option>
+            <option value="high">High</option>
+            <option value="critical">Critical</option>
+          </select>
+        </div>
+        <div class="field" style="width:100%; align-items:flex-start"><label style="width:110px; padding-top:6px">Description</label><textarea id="ticketDesc" placeholder="Symptoms, steps, expectations" rows="4"></textarea></div>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <button class="btn btn-cyan" id="ticketSubmit">Submit</button>
+        <button class="btn btn-gray" id="ticketCancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="meshProfileModal">
+    <div class="box">
+      <h3 style="margin-top:0" id="meshProfileHeading">Node Profile</h3>
+      <div class="row" style="flex-direction:column; gap:10px">
+        <div class="field" style="width:100%"><label style="width:110px">Node</label><span id="meshProfileId" class="tag"></span></div>
+        <div class="field" style="width:100%"><label style="width:110px">Nickname</label><input id="meshProfileNickname" placeholder="Friendly name" style="width:100%" /></div>
+        <div class="field" style="width:100%; align-items:flex-start"><label style="width:110px; padding-top:6px">Notes</label><textarea id="meshProfileNotes" placeholder="Notes, channels, RF/MQTT info" rows="4"></textarea></div>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <button class="btn btn-cyan" id="meshProfileSave">Save</button>
+        <button class="btn btn-gray" id="meshProfileCancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="meshChannelModal">
+    <div class="box">
+      <h3 style="margin-top:0" id="meshChannelHeading">Channel Prefs</h3>
+      <div class="row" style="flex-direction:column; gap:10px">
+        <div class="field" style="width:100%"><label style="width:110px">Channel</label><span id="meshChannelName" class="tag"></span></div>
+        <div class="row" style="gap:12px; flex-wrap:wrap">
+          <label class="tag"><input type="checkbox" id="chPrefMuteMsg"> Mute messaging</label>
+          <label class="tag"><input type="checkbox" id="chPrefSoloMsg"> Solo messaging</label>
+          <label class="tag"><input type="checkbox" id="chPrefMuteTts"> Mute TTS</label>
+          <label class="tag"><input type="checkbox" id="chPrefSoloTts"> Solo TTS</label>
+        </div>
+        <div class="tag">Mute = hide from UI or skip TTS. Solo = only this channel (if any solo exists).</div>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <button class="btn btn-cyan" id="meshChannelSave">Save</button>
+        <button class="btn btn-gray" id="meshChannelCancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/susnet/vendor/leaflet/leaflet.js"></script>
+  <script>
+    const $ = (s, el=document) => el.querySelector(s);
+    const API = location.origin;
+    const LOW_POWER_KEY = 'susnet-low-power-v1';
+    const MESH_PROFILE_KEY = 'mesh-profiles-v1';
+    const MESH_CHANNEL_PREF_KEY = 'mesh-channel-prefs-v1';
+    const POCKET_NODE = '527246148';
+    const DEFAULT_CENTER = { lat: 35.0, lon: -79.0 };
+    let lowPower = false;
+    const inFlight = new Set();
+    const state = { nodes: [], favs: { nodes: {}, modes: {}, modeCurrentKey: '' }, modes: [], map: null, mapLayer: null, aprs: { config: null, entries: [] }, mesh: { topo: [], channels: [], channelDetails: [], favs: [], profiles: {}, channelPrefs: {}, filters: { fav:false, mqtt:false, rf:false, stale:false, channel:'', dm:false, search:'', hideNcmesh:true }, messages: [], telemetry: [], profileEditingId: null }, tickets: { open: [], loaded: false } };
+    const ts = () => new Date().toLocaleTimeString();
+    const esc = (s='') => String(s).replace(/[&<>]/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;' }[c]));
+
+    function log(msg){ const div=document.createElement('div'); div.innerHTML=`<span class="ts">[${ts()}]</span> ${msg}`; const box=$('#log'); box.prepend(div); while(box.children.length>400) box.removeChild(box.lastChild); }
+    function abortInFlight(){ inFlight.forEach(c=>c.abort()); inFlight.clear(); }
+    function guardActive(){ if(lowPower){ log('<b style="color:#ff9abf">Low-power mode</b> — enable to run actions'); return false; } return true; }
+    function setDot(elId,stateTxt){ const dot=$(elId); if(!dot) return; dot.classList.remove('ok','err','try','paused'); dot.classList.add(stateTxt); }
+    function enterLowPower(){ lowPower = true; localStorage.setItem(LOW_POWER_KEY,'1'); abortInFlight(); setDot('#apiDot','paused'); setDot('#modeDot','paused'); log('<b>Low-power mode enabled</b> — polling and requests paused'); }
+    function exitLowPower(){ lowPower = false; localStorage.setItem(LOW_POWER_KEY,'0'); log('<b>Resuming activity</b>'); initData(); }
+    function formatAge(hours){ if(hours==null) return '—'; if(hours < 1) return `${Math.round(hours*60)}m ago`; if(hours < 48) return `${hours.toFixed(1)}h ago`; return `${(hours/24).toFixed(1)}d ago`; }
+    function renderLogLines(lines){ return (lines||[]).map(l=>{ const isTs = /^\d{4}-\d{2}-\d{2}/.test(l); const tsPart = isTs ? esc(l.slice(0,19)) : ''; const body = esc(isTs ? l.slice(20) : l); return `<div class="log-entry">${tsPart ? `<span class="ts">${tsPart}</span>` : ''}${body}</div>`; }).join(''); }
+
+    async function api(path, method='GET', payload){
+      if(lowPower) throw new Error('low-power mode active');
+      const controller = new AbortController(); inFlight.add(controller);
+      const opts={method, headers:{'Content-Type':'application/json'}, signal:controller.signal};
+      const timeout = setTimeout(()=>controller.abort(), 8000);
+      if(method!=='GET') opts.body=JSON.stringify(payload||{}); else delete opts.body;
+      try{
+        const res=await fetch(`${API}${path}`, opts);
+        if(!res.ok) throw new Error(`HTTP ${res.status}`);
+        return await res.json();
+      } finally {
+        clearTimeout(timeout);
+        inFlight.delete(controller);
+      }
+    }
+
+    async function fetchNodes(){ const {nodes=[]}=await api('/api/nodes','GET'); state.nodes=nodes; renderNodes(); nodes.forEach(n=>loadNodeFavs(n.id)); nodes.forEach(n=>refreshStatus(n.id)); }
+
+    function renderNodes(){ const grid=$('#nodeGrid'); grid.innerHTML=''; if(!state.nodes.length){ grid.innerHTML='<span class="tag">No nodes found in allmon3.ini</span>'; return; } const pin = [66190,531121]; const ordered=[...state.nodes].sort((a,b)=>{ const ai=pin.indexOf(Number(a.id)); const bi=pin.indexOf(Number(b.id)); if(ai!==-1 || bi!==-1){ if(ai===-1) return 1; if(bi===-1) return -1; return ai-bi; } return (a.id||'').toString().localeCompare((b.id||'').toString()); }); ordered.forEach(n=>{ const card=document.createElement('div'); card.className='panel'; card.innerHTML=`
+        <div class="panel-head"><div class="row" style="gap:8px"><h3 style="margin:0">Node ${n.id}</h3><span class="pill">${n.host}</span></div>
+          <div class="status"><span class="dot try" id="dot-${n.id}"></span><span id="status-${n.id}">Checking…</span></div>
+        </div>
+        <div class="row"><div class="field" style="flex:1 1 auto"><label>Target</label><input id="target-${n.id}" inputmode="numeric" placeholder="Node number" /></div>
+          <button class="btn btn-cyan" data-node="${n.id}" data-action="connect">Connect (perm)</button>
+          <button class="btn btn-rose" data-node="${n.id}" data-action="disc">Disconnect All</button>
+        </div>
+        <div class="row"><button class="btn btn-mag" data-node="${n.id}" data-action="fav">Add Favorite</button><button class="btn btn-amb" data-node="${n.id}" data-action="refresh">Status</button></div>
+        <div class="fav-bar" id="favs-${n.id}"></div>
+      `; grid.appendChild(card); }); bindNodeButtons(); }
+
+    function bindNodeButtons(){ document.querySelectorAll('[data-action]')
+      .forEach(btn=>btn.onclick=async (e)=>{ const node=Number(e.target.getAttribute('data-node')); const action=e.target.getAttribute('data-action');
+        if(action==='connect') return connectNode(node); if(action==='disc') return disconnectNode(node); if(action==='fav') return addNodeFavorite(node); if(action==='refresh') return refreshStatus(node);
+      }); }
+
+    async function refreshStatus(node){ if(lowPower){ setNodeStatus(node,'paused','Paused'); return; } try{ const {connected=[]}=await api('/api/status','POST',{localNode:node}); const text = connected.length ? `Linked: ${connected.join(', ')}` : 'No links'; setNodeStatus(node, connected.length?'ok':'err', text); log(`Node ${node}: ${text}`);} catch(e){ setNodeStatus(node,'err','Error'); log(`<b style="color:#ff9abf">Status ${node} failed</b> ${e.message}`);} }
+    function setNodeStatus(node, stateTxt, text){ const dot=$(`#dot-${node}`); const label=$(`#status-${node}`); if(dot){ dot.classList.remove('ok','err','try','paused'); dot.classList.add(stateTxt); } if(label) label.textContent=text; }
+
+    async function disconnectNode(node){ if(!guardActive()) return; setNodeStatus(node,'try','Disconnecting…'); try{ await api('/api/disconnect-all','POST',{localNode:node}); log(`<b>Disconnect all</b> on ${node}`);} catch(e){ log(`<b style="color:#ff9abf">Disconnect failed</b> ${e.message}`);} await refreshStatus(node); }
+
+    async function connectNode(node){
+      if(!guardActive()) return;
+      const target=($(`#target-${node}`)?.value||'').trim();
+      if(!/^\d{3,7}$/.test(target)){ log(`<b style="color:#ff9abf">Invalid target</b> ${target}`); return; }
+      const disconnectFirst = $('#disconnectToggle') ? !!$('#disconnectToggle').checked : true;
+      setNodeStatus(node,'try',`Linking → ${target}`);
+      try{
+        if(disconnectFirst){ await api('/api/disconnect-all','POST',{localNode:node}); }
+        await api('/api/connect','POST',{localNode:node, target:Number(target), mode:'perm'});
+        log(`<b>Connect sent</b> ${node} → ${target}${disconnectFirst?' (after disconnect)': ''}`);
+      } catch(e){
+        log(`<b style="color:#ff9abf">Connect failed</b> ${e.message}`);
+      }
+      await refreshStatus(node);
+    }
+
+    async function loadNodeFavs(node){ const {favorites=[]}=await api(`/api/favorites?scope=node&key=${node}`); state.favs.nodes[node]=favorites; renderNodeFavs(node); }
+    async function addNodeFavorite(node){ if(!guardActive()) return; const target=($(`#target-${node}`)?.value||'').trim(); if(!/^\d{3,7}$/.test(target)){ log(`<b style="color:#ff9abf">Invalid target</b> ${target}`); return; } const label=prompt('Label for favorite', target) || target; const payload={scope:'node', key:String(node), id:target, label}; const {favorites=[]}=await api('/api/favorites','POST',payload); state.favs.nodes[node]=favorites; renderNodeFavs(node); log(`Favorite added for ${node}: ${label}`); }
+    function bindFavButton(btn,node,target){
+      let timer=null;
+      const clear=()=>{ if(timer){ clearTimeout(timer); timer=null; } };
+      const trigger=()=>{ clear(); timer=setTimeout(()=>{ $(`#target-${node}`).value=target; connectNode(node); },450); };
+      btn.onclick=(e)=>{ e.preventDefault(); clear(); $(`#target-${node}`).value=target; };
+      btn.onmousedown=trigger; btn.onmouseup=clear; btn.onmouseleave=clear;
+      btn.ontouchstart=(e)=>{ trigger(); };
+      btn.ontouchend=btn.ontouchcancel=clear;
+    }
+    function renderNodeFavs(node){ const bar=$(`#favs-${node}`); if(!bar) return; const favs=state.favs.nodes[node]||[]; bar.innerHTML=''; if(!favs.length){ bar.innerHTML='<span class="tag">No favorites yet</span>'; return; } favs.forEach(f=>{ const b=document.createElement('button'); b.className='fav'; b.textContent=f.label||f.id; bindFavButton(b, node, f.id); bar.appendChild(b); }); }
+
+    // DVSwitch
+    async function fetchModes(){ const {modes=[]}=await api('/api/mode/modes'); state.modes=modes; renderModeSelect(); const initialMode = $('#modeSelect')?.value || (modes[0]?.name || ''); await loadModeFavs(initialMode); const {mode,tgid}=await api('/api/mode/status'); updateModeStatus(mode,tgid); }
+    function renderModeSelect(){ const modeSel=$('#modeSelect'); const tgSel=$('#tgSelect'); modeSel.innerHTML=''; tgSel.innerHTML=''; state.modes.forEach(m=>{ const opt=document.createElement('option'); opt.value=m.name; opt.textContent=m.name; modeSel.appendChild(opt); }); if(state.modes[0]) fillTgSelect(state.modes[0].name); modeSel.onchange=()=>{ fillTgSelect(modeSel.value); loadModeFavs(modeSel.value); }; }
+    function fillTgSelect(modeName){ const tgSel=$('#tgSelect'); tgSel.innerHTML=''; const mode=state.modes.find(m=>m.name===modeName); (mode?.talkgroups||[]).forEach(tg=>{ const opt=document.createElement('option'); opt.value=tg.tgid; opt.textContent=`${tg.alias} (${tg.tgid})`; tgSel.appendChild(opt); }); }
+    async function setMode(){ if(!guardActive()) return; const mode=$('#modeSelect').value; const tgid=$('#tgSelect').value||null; setDot('#modeDot','try'); $('#modeText').textContent='Switching…'; try{ await api('/api/mode/select','POST',{mode,tgid}); updateModeStatus(mode,tgid); log(`<b>Mode set</b> ${mode} ${tgid||''}`);} catch(e){ setDot('#modeDot','err'); $('#modeText').textContent='Error'; log(`<b style="color:#ff9abf">Mode set failed</b> ${e.message}`);} }
+    function updateModeStatus(mode,tgid){ if(lowPower){ setDot('#modeDot','paused'); $('#modeText').textContent='Paused'; return; } setDot('#modeDot','ok'); $('#modeText').textContent=mode ? `${mode}${tgid? ' / '+tgid:''}` : 'Not set'; }
+    const modeFavKey = (mode)=> mode && mode.length ? mode : 'global';
+    async function loadModeFavs(mode){ const key = modeFavKey(mode || $('#modeSelect')?.value || ''); const {favorites=[]}=await api(`/api/favorites?scope=mode&key=${encodeURIComponent(key)}`); state.favs.modeCurrentKey = key; state.favs.modes[key] = favorites; renderModeFavs(); }
+    async function addModeFav(){ if(!guardActive()) return; const mode=$('#modeSelect').value; const tgid=$('#tgSelect').value||''; const label=prompt('Label for mode favorite', `${mode} ${tgid}`) || `${mode} ${tgid}`; const payload={scope:'mode', key:modeFavKey(mode), id:`${mode}:${tgid}`, label}; const {favorites=[]}=await api('/api/favorites','POST',payload); state.favs.modeCurrentKey = modeFavKey(mode); state.favs.modes[state.favs.modeCurrentKey]=favorites; renderModeFavs(); log('Mode favorite added'); }
+    function renderModeFavs(){ const bar=$('#modeFavs'); bar.innerHTML=''; const key = state.favs.modeCurrentKey || modeFavKey($('#modeSelect')?.value || ''); const favs=state.favs.modes[key]||[]; if(!favs.length){ bar.innerHTML='<span class="tag">No favorites yet for this mode</span>'; return; } favs.forEach(f=>{ const btn=document.createElement('button'); btn.className='fav'; btn.textContent=f.label||f.id; btn.onclick=()=>{ const [mode,tgid]=''+f.id.split(':'); if(mode){ $('#modeSelect').value=mode; fillTgSelect(mode); } if(tgid) $('#tgSelect').value=tgid; setMode(); }; bar.appendChild(btn); }); }
+
+    // APRS
+    function updateAprsConfigUi(cfg){ if(!cfg) return; if($('#aprsWatch')) $('#aprsWatch').value = cfg.watch || ''; if($('#aprsZip')) $('#aprsZip').value = cfg.zip || ''; if($('#aprsRadius')) $('#aprsRadius').value = cfg.radius_miles ?? ''; $('#aprsTag').textContent = cfg.callsign ? `Callsign: ${cfg.callsign}` : 'Callsign: —'; $('#aprsFilterTag').textContent = cfg.filter ? `Filter: ${cfg.filter}` : `Filter: watch ${cfg.watch||''}, ${cfg.radius_miles||''}mi`; }
+    async function loadAprsConfig(){ try{ const {config}=await api('/api/aprs/config'); state.aprs.config=config; updateAprsConfigUi(config); } catch(e){ log(`<b style="color:#ff9abf">APRS config load failed</b> ${e.message}`); } }
+    async function saveAprsConfig(){ if(!guardActive()) return; const zip=($('#aprsZip')?.value||'').trim(); const watch=($('#aprsWatch')?.value||'').trim(); const radiusStr=($('#aprsRadius')?.value||'').trim(); const radius=parseFloat(radiusStr); if(!zip||!watch||Number.isNaN(radius)){ log('<b style="color:#ff9abf">APRS config incomplete</b>'); return; } try{ const payload={zip, watch, radius_miles:radius}; if(state.aprs.config?.target) payload.target=state.aprs.config.target; if(state.aprs.config?.callsign) payload.callsign=state.aprs.config.callsign; const {config}=await api('/api/aprs/config','POST',payload); state.aprs.config=config; updateAprsConfigUi(config); log('<b>APRS config saved</b> (listener restarting)'); await refreshAprs(); } catch(e){ log(`<b style="color:#ff9abf">APRS config save failed</b> ${e.message}`); } }
+    function renderAprs(entries){
+      const box=$('#aprsLog'); if(!box) return;
+      const filter=($('#aprsFilter')?.value||'').toLowerCase();
+      const filtered = (entries||[]).filter(e=>{
+        const hay = `${e.message||e.text||e.raw||''} ${e.from||''} ${e.to||''}`.toLowerCase();
+        return !filter || hay.includes(filter);
+      });
+      if(!filtered.length){ box.innerHTML='<span class="tag">No APRS activity</span>'; return; }
+      box.innerHTML = filtered.map(e=>{
+        const ts = esc(e.timestamp||'');
+        const from = esc(e.from||'');
+        const to = esc(e.to||'');
+        const msg = esc(e.message||e.text||e.raw||'');
+        return `<div class="log-entry">
+          ${ts? `<span class="ts">${ts}</span>`:''}
+          <div>${from? `<span class="pill">${from}${to? ` → ${to}`:''}</span>`:''}</div>
+          <div>${msg}</div>
+        </div>`;
+      }).join('');
+    }
+    async function refreshAprs(){
+      if(!guardActive()) return;
+      const {entries=[], config}=await api('/api/aprs/messages');
+      if(config){ state.aprs.config=config; updateAprsConfigUi(config); }
+      state.aprs.entries = entries;
+      renderAprs(entries);
+      log('<b>APRS refreshed</b>');
+    }
+    async function sendAprs(){ if(!guardActive()) return; const msg=($('#aprsMsg')?.value||'').trim(); const dest=($('#aprsTo')?.value||'').trim(); if(!msg){ log('<b style="color:#ff9abf">APRS message required</b>'); return; } try{ await api('/api/aprs/send','POST',{message:msg, dest:dest||undefined}); log('<b>APRS sent</b>'); } catch(e){ log(`<b style="color:#ff9abf">APRS send failed</b> ${e.message}`); } }
+    async function sendTts(){
+      if(!guardActive()) return;
+      const text = ($('#ttsText')?.value||'').trim();
+      const node = ($('#ttsNode')?.value||'').trim();
+      if(!text){ log('<b style="color:#ff9abf">TTS text required</b>'); return; }
+      try{
+        await api('/api/tts','POST',{text, node: node||undefined});
+        log(`<b>TTS sent</b> ${text.substring(0,120)}`);
+      } catch(e){
+        log(`<b style="color:#ff9abf">TTS send failed</b> ${e.message||e}`);
+      }
+    }
+
+    // Meshtastic
+    async function loadMeshFavs(){ const {favorites=[]}=await api('/api/favorites?scope=mesh&key=global'); state.mesh.favs=favorites; }
+    function meshFavIds(){ return new Set((state.mesh.favs||[]).map(f=>f.id)); }
+    function applyMeshFilters(nodes){ const f=state.mesh.filters; return nodes.filter(n=>{ if(f.fav && !n.favorite) return false; if(f.mqtt && !n.via_mqtt) return false; if(f.rf && n.via_mqtt) return false; if(f.stale && !n.stale) return false; return true; }); }
+    function sortMeshNodes(nodes){ const favs=meshFavIds(); return [...nodes].sort((a,b)=>{ const af=favs.has(a.id)?0:1, bf=favs.has(b.id)?0:1; if(af!==bf) return af-bf; const as=a.stale?1:0, bs=b.stale?1:0; if(as!==bs) return as-bs; return (a.name||a.id).localeCompare(b.name||b.id); }); }
+    function renderMeshTopology(){ /* legacy node dropdown not used in new UI */ }
+    function formatTsHuman(ts){ if(!ts) return '—'; const d=new Date(ts); const dd=String(d.getDate()).padStart(2,'0'); const mm=String(d.getMonth()+1).padStart(2,'0'); const yyyy=d.getFullYear(); let hh=d.getHours(); const ampm=hh>=12?'PM':'AM'; hh = hh%12 || 12; const min=String(d.getMinutes()).padStart(2,'0'); return `${dd}/${mm}/${yyyy} ${hh}:${min} ${ampm}`; }
+
+    function renderMeshChannels(){ const box=$('#meshChannelChips'); if(!box) return; const channels = ['All', ...(state.mesh.channels||[])]; box.innerHTML=''; channels.forEach(ch=>{ const prefs=state.mesh.channelPrefs[ch]||{muteMsg:false,muteTts:false,soloMsg:false,soloTts:false}; const div=document.createElement('div'); div.className='chip'; div.textContent=ch; const active = (!state.mesh.filters.channel && ch==='All') || (state.mesh.filters.channel && state.mesh.filters.channel===ch); if(active) div.classList.add('active'); if(prefs.muteMsg || prefs.muteTts || prefs.soloMsg || prefs.soloTts){ const dot=document.createElement('span'); dot.style.marginLeft='6px'; dot.className='pill'; const flags=[]; if(prefs.muteMsg) flags.push('M'); if(prefs.muteTts) flags.push('T'); if(prefs.soloMsg) flags.push('SM'); if(prefs.soloTts) flags.push('ST'); dot.textContent=flags.join('/'); div.appendChild(dot); } div.onclick=()=>{ state.mesh.filters.channel = ch==='All' ? '' : ch; renderMeshChannels(); renderMeshLogs(); renderMeshProfiles(); }; const gear=document.createElement('button'); gear.className='btn btn-gray'; gear.style.padding='6px 8px'; gear.style.fontSize='.8rem'; gear.textContent='⚙'; gear.onclick=(e)=>{ e.stopPropagation(); openChannelPrefs(ch); }; const wrap=document.createElement('div'); wrap.style.display='flex'; wrap.style.alignItems='center'; wrap.style.gap='6px'; wrap.appendChild(div); if(ch!=='All') wrap.appendChild(gear); box.appendChild(wrap); }); }
+    function renderMeshSendChannel(){
+      const sel=$('#meshSendChannel'); if(!sel) return;
+      sel.innerHTML='';
+      const def=document.createElement('option'); def.value=''; def.textContent='(default)'; sel.appendChild(def);
+      const details = (state.mesh.channelDetails && state.mesh.channelDetails.length)
+        ? state.mesh.channelDetails
+        : (state.mesh.channels||[]).map((name,idx)=>({name,index:idx}));
+      details.forEach((ch)=>{ if(!ch || !ch.name) return; const opt=document.createElement('option'); opt.value=ch.name; const hasIdx = ch.index !== undefined && ch.index !== null && ch.index !== ''; opt.textContent = hasIdx ? `${ch.name} (#${ch.index})` : ch.name; if(hasIdx) opt.dataset.index = ch.index; sel.appendChild(opt); });
+    }
+
+    function toggleMeshFilter(key){ const f=state.mesh.filters; if(key==='dm'){ f.dm = !f.dm; } else if(key==='mqtt'){ f.mqtt = !f.mqtt; f.rf = false; } else if(key==='rf'){ f.rf = !f.rf; f.mqtt = false; } else if(key==='ncmesh'){ f.hideNcmesh = !f.hideNcmesh; } renderMeshLogs(); renderMeshFilterChips(); }
+
+    function renderMeshFilterChips(){ document.querySelectorAll('[data-mesh-filter]').forEach(chip=>{ const k=chip.getAttribute('data-mesh-filter'); let active=false; if(k==='dm') active=!!state.mesh.filters.dm; if(k==='mqtt') active=!!state.mesh.filters.mqtt; if(k==='rf') active=!!state.mesh.filters.rf; if(k==='ncmesh') active=!!state.mesh.filters.hideNcmesh; chip.classList.toggle('active', active); }); }
+
+    function updateMeshFilterSummary(filteredCount,total){ const tag=$('#meshFilterSummary'); if(tag) tag.textContent = `Showing ${filteredCount}/${total||0} messages`; }
+
+    function nicknameForNode(id, fallback){ const p = state.mesh.profiles?.[id] || {}; return p.nickname?.trim() || fallback || id; }
+    function displayNameForNode(id, fromName){ const prof = state.mesh.profiles?.[id] || {}; if(prof.nickname) return prof.nickname; if(fromName) return fromName; const topo = state.mesh.topo || []; const n = topo.find(n=>n.id===id); return (n && n.name) ? n.name : (id||'unknown'); }
+    function loadChannelPrefs(){ try{ const raw=localStorage.getItem(MESH_CHANNEL_PREF_KEY); state.mesh.channelPrefs = raw ? JSON.parse(raw) : {}; } catch(e){ state.mesh.channelPrefs = {}; } }
+    function saveChannelPrefs(){ try{ localStorage.setItem(MESH_CHANNEL_PREF_KEY, JSON.stringify(state.mesh.channelPrefs||{})); } catch(e){} }
+
+    async function openChannelPrefs(ch){ const prefs = state.mesh.channelPrefs[ch] || {muteMsg:false,muteTts:false,soloMsg:false,soloTts:false}; const body = prompt(`Channel ${ch} prefs (m:mute msg, t:mute tts, sm:solo msg, st:solo tts)\nEnter any combination separated by commas.\nCurrent: ${JSON.stringify(prefs)}`, ['muteMsg','muteTts','soloMsg','soloTts'].filter(k=>prefs[k]).join(',')); if(body===null) return; const tokens=(body||'').split(',').map(s=>s.trim().toLowerCase()).filter(Boolean); const next={muteMsg:false,muteTts:false,soloMsg:false,soloTts:false}; tokens.forEach(t=>{ if(t==='m'||t==='mutemsg') next.muteMsg=true; if(t==='t'||t==='mutetts') next.muteTts=true; if(t==='sm'||t==='solomsg') next.soloMsg=true; if(t==='st'||t==='solotts') next.soloTts=true; }); state.mesh.channelPrefs[ch]=next; await persistMeshPrefs({channels:{[ch]:next}}); renderMeshChannels(); renderMeshLogs(); }
+
+    function filterMeshMessages(msgs){ const f=state.mesh.filters; const prefs=state.mesh.channelPrefs||{}; const activeSoloMsg = Object.values(prefs).some(p=>p.soloMsg); const activeSoloTts = Object.values(prefs).some(p=>p.soloTts); const search = (f.search||'').toLowerCase(); return (msgs||[]).filter(m=>{ const channel = (m.channel||'').toLowerCase(); const cp = prefs[m.channel||''] || {muteMsg:false,muteTts:false,soloMsg:false,soloTts:false}; if(f.channel && channel !== f.channel.toLowerCase()) return false; if(f.hideNcmesh && /nc\s?mesh/i.test(channel)) return false; const viaMqtt = !!(m.via_mqtt || m.via === 'mqtt'); if(f.mqtt && !viaMqtt) return false; if(f.rf && viaMqtt) return false; if(f.dm){ const toId = (m.to||'') || ''; if(!toId || toId === '^all' || toId === '^local') return false; } if(cp.muteMsg) return false; if(activeSoloMsg && !cp.soloMsg) return false; if(activeSoloTts && !cp.soloTts && !cp.soloMsg) { /* skip messages for TTS-only solo? UI view still shows unless soloMsg*/ } if(search){ const hay = `${m.text||''} ${m.from||''} ${m.from_name||''} ${nicknameForNode(m.from||'', m.from_name||'')}`.toLowerCase(); if(!hay.includes(search)) return false; } return true; }); }
+
+    function renderMeshLogs(){ const box=$('#meshMessages'); if(!box) return; const msgs=state.mesh.messages||[]; const filtered = msgs.length && typeof msgs[0]==='object' ? filterMeshMessages(msgs) : msgs;
+      if(filtered.length && typeof filtered[0]==='object'){ box.innerHTML = filtered.map(m=>{ const rawName = m.from_name || m.from || 'unknown'; const name = displayNameForNode(m.from||'', rawName); const ch = m.channel || 'Primary'; const ts = formatTsHuman(m.timestamp || (m.rxTime? m.rxTime*1000 : Date.now())); const body = m.text || ''; const via = m.via_mqtt ? 'MQTT' : 'RF'; return `<div class="log-entry"><div class="row" style="gap:8px; align-items:center; margin-bottom:4px"><span class="pill">${esc(ch)}</span><span class="pill">${esc(name)}</span><span class="pill">${via}</span></div><div class="ts">${ts}</div><div>${esc(body)}</div></div>`; }).join('') || '<span class="tag">No messages</span>'; } else { box.innerHTML=renderLogLines(filtered) || '<span class="tag">No messages</span>'; } $('#meshTelemetry').innerHTML=renderLogLines(state.mesh.telemetry) || '<span class="tag">No telemetry</span>'; const status=$('#meshStatusTag'); if(status) status.textContent = `Messages: ${filtered.length}`; updateMeshFilterSummary(filtered.length, msgs.length); }
+
+    async function loadMeshPrefs(){ try{ const {prefs}=await api('/api/meshtastic/prefs'); state.mesh.channelPrefs = prefs.channels||{}; state.mesh.profiles = prefs.profiles||{}; } catch(e){ try{ const raw = localStorage.getItem(MESH_CHANNEL_PREF_KEY); if(raw) state.mesh.channelPrefs = JSON.parse(raw); } catch(_){} try{ const rawp = localStorage.getItem(MESH_PROFILE_KEY); if(rawp) state.mesh.profiles = JSON.parse(rawp); } catch(_){} } }
+    function saveMeshPrefsLocal(){ try{ localStorage.setItem(MESH_CHANNEL_PREF_KEY, JSON.stringify(state.mesh.channelPrefs||{})); localStorage.setItem(MESH_PROFILE_KEY, JSON.stringify(state.mesh.profiles||{})); } catch(e){} }
+    async function persistMeshPrefs(payload){ try{ await api('/api/meshtastic/prefs','POST', payload); } catch(e){ /* fall back to local only */ } saveMeshPrefsLocal(); }
+
+    function renderMeshProfiles(){ const box = $('#meshProfiles'); if(!box) return; const favs = state.mesh.favs || []; const nodes = state.mesh.topo || []; const cards = favs.map(f=>{ const node = nodes.find(n=>n.id===f.id) || { id:f.id, name:f.label||f.id, age_hours:null, via_mqtt:false, stale:false }; const prof = state.mesh.profiles?.[f.id] || {}; const nickname = prof.nickname || f.label || node.name || node.id; const last = node.age_hours!=null ? formatAge(node.age_hours) : '—'; const via = node.via_mqtt ? 'MQTT' : 'RF'; const notes = prof.notes || ''; return `<div class="panel-ghost" style="min-width:0"><div class="row" style="gap:8px; align-items:center; margin-bottom:6px"><span class="pill">${esc(node.id)}</span><span class="pill">${esc(via)}</span><span class="tag">Last: ${last}</span></div><div style="margin-bottom:6px"><b>${esc(nickname)}</b></div>${notes? `<div class="tag">${esc(notes)}</div>`:''}<div class="row" style="margin-top:8px"><button class="btn btn-gray" data-mesh-profile="${node.id}">Profile</button></div></div>`; }); box.innerHTML = cards.join('') || '<span class="tag">Favorite a node to add a profile</span>'; document.querySelectorAll('[data-mesh-profile]').forEach(btn=>{ btn.onclick=()=>openMeshProfile(btn.getAttribute('data-mesh-profile')); }); }
+
+    function openMeshProfile(nodeId){ if(!nodeId) return; state.mesh.profileEditingId = nodeId; const prof = state.mesh.profiles?.[nodeId] || {}; const heading = $('#meshProfileHeading'); if(heading) heading.textContent = `Profile for ${nodeId}`; const idSpan = $('#meshProfileId'); if(idSpan) idSpan.textContent = nodeId; const nick = $('#meshProfileNickname'); if(nick) nick.value = prof.nickname || ''; const notes = $('#meshProfileNotes'); if(notes) notes.value = prof.notes || ''; const m=$('#meshProfileModal'); if(m){ m.classList.add('show'); document.body.classList.add('modal-open'); setTimeout(()=>nick?.focus(), 20); } }
+
+    function closeMeshProfile(){ const m=$('#meshProfileModal'); if(m){ m.classList.remove('show'); document.body.classList.remove('modal-open'); } state.mesh.profileEditingId=null; }
+
+    async function saveMeshProfile(){ const id = state.mesh.profileEditingId; if(!id) return; const nick = ($('#meshProfileNickname')?.value||'').trim(); const notes = ($('#meshProfileNotes')?.value||'').trim(); state.mesh.profiles = state.mesh.profiles || {}; state.mesh.profiles[id] = { nickname:nick, notes:notes }; await persistMeshPrefs({profiles:{[id]:{nickname:nick, notes:notes}}}); closeMeshProfile(); renderMeshLogs(); renderMeshProfiles(); }
+
+    async function refreshMesh(){ if(!guardActive()) return; try{ await loadMeshFavs(); const topo=await api('/api/meshtastic/topology'); state.mesh.topo = topo.nodes||[]; state.mesh.channelDetails = topo.channel_details||[]; state.mesh.channels = topo.channels||state.mesh.channelDetails.map(ch=>ch.name).filter(Boolean); const msgs=await api('/api/meshtastic/messages'); const items=msgs.items||[]; state.mesh.messages = items.length ? items.slice(0,200) : (msgs.lines||[]).slice(0,200); const tele=await api('/api/meshtastic/telemetry'); state.mesh.telemetry = (tele.lines||[]).slice(0,100); renderMeshChannels(); renderMeshSendChannel(); renderMeshFilterChips(); renderMeshLogs(); renderMeshProfiles(); log('<b>Mesh/APRS refreshed</b>'); } catch(e){ log(`<b style="color:#ff9abf">Mesh/APRS error</b> ${e.message}`); }}
+    async function sendMesh(){
+      if(!guardActive()) return;
+      const msg=($('#meshMsg')?.value||'').trim();
+      const dest=($('#meshTo')?.value||'').trim() || undefined;
+      const channelName = ($('#meshSendChannel')?.value||'').trim();
+      const opt = $('#meshSendChannel')?.selectedOptions?.[0];
+      const channelIndexRaw = opt?.dataset?.index;
+      const channelIndex = (channelIndexRaw!==undefined && channelIndexRaw!=='') ? Number(channelIndexRaw) : undefined;
+      if(!msg){ log('<b style="color:#ff9abf">Meshtastic message required</b>'); return; }
+      const payload = {message:msg, dest:dest||undefined};
+      if(channelName) { payload.channel_name = channelName; payload.channel = channelName; }
+      if(channelIndex !== undefined && !Number.isNaN(channelIndex)) { payload.channel_index = channelIndex; }
+      try{
+        await api('/api/meshtastic/send','POST',payload);
+        const chLabel = channelName || (channelIndex!==undefined ? `#${channelIndex}` : '');
+        log(`<b>Meshtastic sent</b> ${chLabel? '(ch '+chLabel+')':''}`);
+      } catch(e){
+        log(`<b style=\"color:#ff9abf\">Meshtastic send failed</b> ${e.message}`);
+      }
+    }
+
+    // Map
+    function initMap(){
+      if(typeof L === 'undefined'){ log('<b style="color:#ff9abf">Map init failed</b> Leaflet not loaded'); return; }
+      state.map = L.map('map',{zoomControl:true}).setView([DEFAULT_CENTER.lat,DEFAULT_CENTER.lon], 7);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; OSM'}).addTo(state.map);
+      state.mapLayer = L.layerGroup().addTo(state.map);
+    }
+    function fitMapTo(points){ if(!points.length) return; const latlngs=points.map(p=>[p.lat,p.lon]); const bounds=L.latLngBounds(latlngs); state.map.fitBounds(bounds,{padding:[20,20], maxZoom:10}); }
+    async function refreshMap(){ if(lowPower) { return; } const {points=[]}=await api('/api/map','GET'); state.mapLayer.clearLayers(); let centerSet=false; const renderPts=[]; points.forEach(p=>{ if(p.lat==null || p.lon==null) return; const color = p.source==='aprs' ? '#38bdf8' : (p.source==='favorite' ? '#34d399' : '#ff61e6'); const circle=L.circleMarker([p.lat,p.lon],{radius:8,color,fillColor:color,fillOpacity:0.6}); circle.bindPopup(`<b>${p.label||p.id||'Item'}</b><br>${p.source}`); state.mapLayer.addLayer(circle); renderPts.push({lat:p.lat,lon:p.lon}); if(!centerSet && String(p.id)===POCKET_NODE){ state.map.setView([p.lat,p.lon], 8); centerSet=true; } }); if(!centerSet && renderPts.length){ fitMapTo(renderPts); } else if(!centerSet){ state.map.setView([DEFAULT_CENTER.lat,DEFAULT_CENTER.lon],7); } log('<b>Map refreshed</b>'); }
+
+    // Tickets (support / troubleshooting)
+    function showTicketModal(){ const m=$('#ticketModal'); if(m){ m.classList.add('show'); document.body.classList.add('modal-open'); setTimeout(()=>$('#ticketTitle')?.focus(),30); } }
+    function hideTicketModal(){ const m=$('#ticketModal'); if(m){ m.classList.remove('show'); document.body.classList.remove('modal-open'); } }
+
+    async function fetchTickets(){
+      try{
+        const {tickets=[]}=await api('/api/tickets?status=open','GET');
+        state.tickets.open = tickets;
+        state.tickets.loaded = true;
+        renderTickets();
+      }catch(e){
+        log(`<b style="color:#ff9abf">Ticket load failed</b> ${e.message||e}`);
+      }
+    }
+
+    function renderTickets(){
+      const box = $('#ticketList'); if(!box) return;
+      if(!state.tickets.loaded){ box.innerHTML = '<span class="tag">Click "View Open Tickets" to load</span>'; return; }
+      const tickets = state.tickets.open || [];
+      if(!tickets.length){ box.innerHTML = '<span class="tag">No open tickets</span>'; return; }
+      box.innerHTML = tickets.map(t=>{
+        const sev = esc(t.severity||'');
+        const sub = esc(t.subsystem||'');
+        const title = esc(t.title||'');
+        const opened = esc(t.date_opened||'');
+        const id = esc(t.id||'');
+        return `<div class="log-entry">
+          <div class="row" style="gap:8px; align-items:center; margin-bottom:4px">
+            <span class="pill">${id}</span><span class="pill">${sev||'severity'}</span><span class="pill">${sub||'subsystem'}</span><span class="tag">${opened}</span>
+          </div>
+          <div>${title}</div>
+          <div class="row" style="margin-top:6px">
+            <button class="btn btn-rose" data-ticket-close="${id}">Close</button>
+          </div>
+        </div>`;
+      }).join('');
+      document.querySelectorAll('[data-ticket-close]').forEach(btn=>{
+        btn.onclick = ()=>closeTicket(btn.getAttribute('data-ticket-close'));
+      });
+    }
+
+    async function createTicket(){
+      const title = ($('#ticketTitle')?.value||'').trim();
+      const subsystem = ($('#ticketSubsystem')?.value||'').trim();
+      const severity = ($('#ticketSeverity')?.value||'').trim();
+      const desc = ($('#ticketDesc')?.value||'').trim();
+      if(!title || !desc){ log('<b style="color:#ff9abf">Title and description required</b>'); return; }
+      try{
+        const res = await api('/api/tickets','POST',{title, description:desc, subsystem: subsystem||undefined, severity: severity||undefined});
+        if(document.activeElement && typeof document.activeElement.blur === 'function') document.activeElement.blur();
+        hideTicketModal();
+        if($('#ticketTitle')) $('#ticketTitle').value='';
+        if($('#ticketSubsystem')) $('#ticketSubsystem').value='';
+        if($('#ticketSeverity')) $('#ticketSeverity').value='';
+        if($('#ticketDesc')) $('#ticketDesc').value='';
+        await fetchTickets();
+        const id = res?.id || '';
+        log(`<b>Support ticket created</b> ${id? id+' · ':''}${title}`);
+      }catch(e){
+        log(`<b style="color:#ff9abf">Ticket create failed</b> ${e.message||e}`);
+      }
+    }
+
+    async function closeTicket(id){
+      if(!id) return;
+      const resolution = prompt('Resolution / notes?','');
+      if(resolution===null) return;
+      try{
+        await api(`/api/tickets/${encodeURIComponent(id)}/close`,'POST',{resolution});
+        await fetchTickets();
+        log(`<b>Ticket closed</b> ${id}`);
+      }catch(e){
+        log(`<b style="color:#ff9abf">Ticket close failed</b> ${e.message||e}`);
+      }
+    }
+
+    async function checkApi(){ if(lowPower){ setDot('#apiDot','paused'); $('#apiText').textContent='Paused'; return false; } try{ await api('/api/health','GET'); setDot('#apiDot','ok'); $('#apiText').textContent='API ready'; return true; } catch{ setDot('#apiDot','err'); $('#apiText').textContent='API down'; return false; } }
+
+    function wire(){ 
+      $('#lowPowerSwitch').onchange=(e)=> e.target.checked ? enterLowPower() : exitLowPower(); 
+      $('#refreshNodes').onclick=()=>{if(guardActive()) fetchNodes();}; 
+      $('#refreshModes').onclick=()=>{if(guardActive()) fetchModes();}; 
+      $('#setMode').onclick=setMode; $('#addModeFav').onclick=addModeFav; 
+      $('#aprsRefresh').onclick=refreshAprs; $('#aprsSend').onclick=sendAprs; $('#aprsSaveCfg').onclick=saveAprsConfig; 
+      const af=$('#aprsFilter'); if(af) af.oninput=()=>renderAprs(state.aprs.entries||[]);
+      $('#meshRefresh').onclick=refreshMesh; $('#meshSend').onclick=sendMesh; 
+      $('#meshAttach').onclick=()=>api('/api/meshtastic/attach','POST').then(()=>log('Listener started')); 
+      $('#meshDetach').onclick=()=>api('/api/meshtastic/detach','POST').then(()=>log('Listener stopped')); 
+      document.querySelectorAll('[data-mesh-filter]').forEach(chip=> chip.onclick=()=>toggleMeshFilter(chip.getAttribute('data-mesh-filter')) ); 
+      const meshSearch = $('#meshSearch'); if(meshSearch) meshSearch.oninput = ()=>{ state.mesh.filters.search = meshSearch.value.trim(); renderMeshLogs(); };
+      $('#mapRefresh').onclick=refreshMap; $('#clearLog').onclick=()=>$('#log').innerHTML=''; 
+      $('#ticketNewBtn').onclick=showTicketModal; $('#ticketCancel').onclick=hideTicketModal; $('#ticketSubmit').onclick=createTicket; $('#ticketRefreshBtn').onclick=fetchTickets; 
+      $('#meshProfileSave').onclick=saveMeshProfile; $('#meshProfileCancel').onclick=closeMeshProfile;
+      $('#ttsSendBtn').onclick=sendTts;
+    }
+
+    async function initData(){
+      const ok = await checkApi(); if(!ok || lowPower) return;
+      try{ await loadAprsConfig(); } catch(e){ log(`<b style="color:#ff9abf">APRS config load failed</b> ${e.message||e}`); }
+      try{ await fetchNodes(); } catch(e){ log(`<b style="color:#ff9abf">Nodes load failed</b> ${e.message||e}`); }
+      try{ await fetchModes(); } catch(e){ log(`<b style="color:#ff9abf">Modes load failed</b> ${e.message||e}`); }
+      try{ await refreshAprs(); } catch(e){ log(`<b style="color:#ff9abf">APRS load failed</b> ${e.message||e}`); }
+      try{ await refreshMesh(); } catch(e){ log(`<b style="color:#ff9abf">Meshtastic load failed</b> ${e.message||e}`); }
+      try{ await refreshMap(); } catch(e){ log(`<b style="color:#ff9abf">Map load failed</b> ${e.message||e}`); }
+      log('<b>SusNet Ops Hub ready</b>');
+    }
+
+    (async function init(){
+      try{
+        wire(); initMap(); log('Starting up…');
+        await loadMeshPrefs();
+        const savedLow = localStorage.getItem(LOW_POWER_KEY) === '1';
+        if(savedLow){ lowPower = true; $('#lowPowerSwitch').checked = true; setDot('#apiDot','paused'); log('<b>Low-power mode enabled</b> — polling and requests paused'); return; }
+        await initData();
+        setTimeout(()=>{ if(!lowPower){ fetchNodes(); fetchModes(); } }, 1500);
+      } catch(e){
+        setDot('#apiDot','err'); $('#apiText').textContent='Init error'; log(`<b style="color:#ff9abf">Init failed</b> ${e.message||e}`);
+      }
+    })();
+  </script>
+</body>
+</html>
