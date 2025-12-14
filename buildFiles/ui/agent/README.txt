@@ -9,7 +9,7 @@ Core flows
 - Channel selection is by hash (name+PSK) at radio; index is local-only. Always resolve by name using the local channel table. Listener now forces channel fetch before mapping.
 
 UI specifics (Meshtastic)
-- Message display: uses from_name from API or topo longName. Function displayNameForNode falls back to profile nickname > from_name > topo name > ID. If names show as IDs, ensure API name map returns longName (see _mesh_name_lookup) and topology is reachable.
+- Message display: DM entries show “DM” + channel pills and render Sender → Recipient with long names. displayNameForNode falls back to profile nickname > from_name > topo name > ID. If names show as IDs, ensure API name map returns longName (see _mesh_name_lookup) and topology is reachable.
 - Channel label display: channelLabel() maps channelIndex/name via channel_details; shows channel name instead of index.
 - DM dropdown: select populated from /api/meshtastic/topology nodes (id + longName). Blank = broadcast.
 - Channel dropdown: populated from topology channel_details; UI sends both channel_name and channel_index.
@@ -17,7 +17,7 @@ UI specifics (Meshtastic)
 - Logs: messages from /api/meshtastic/messages (messages.json + name map), telemetry from /api/meshtastic/telemetry (mesh.log).
 
 Backend notes
-- _mesh_name_lookup merges fallback IDs with live `meshtastic --nodes` to supply long names. Requires TCP host reachable or serial fallback. If names regress to IDs, check the host in susnet_api.py and connectivity.
+- _mesh_name_lookup merges fallback IDs with live `meshtastic --nodes` (JSON or table output) to supply long names. Requires TCP host reachable or serial fallback. If names regress to IDs, check the host in susnet_api.py and connectivity.
 - /api/meshtastic/topology caches channel_details (name/index) for UI mapping. MESHTASTIC_CHANNELS is a list of dicts {index,name}.
 - Listener: _ensure_channels_loaded() calls requestChannels + waitForConfig on startup to guarantee name->index resolution before send.
 

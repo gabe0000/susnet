@@ -509,24 +509,46 @@ def _mesh_name_lookup() -> Dict[str, str]:
     - Live --nodes output if reachable
     """
     names: Dict[str, str] = {}
+
+    def _add_name(nid: str, name: str) -> None:
+        if not nid:
+            return
+        names[nid] = name or nid
+        if nid.startswith("!"):
+            # Allow lookups with or without leading bang
+            names.setdefault(nid.lstrip("!"), names[nid])
+
     try:
         for entry in _collect_mesh_ids_fallback():
             nid = entry.get("id")
             if nid:
-                names[nid] = entry.get("name") or nid
+                _add_name(nid, entry.get("name") or nid)
     except Exception:
         pass
-    # Try live --nodes (TCP/serial)
+    # Try live --nodes (TCP/serial) and include user.longName if present
     try:
         raw = _run_meshtastic(["--nodes"])
         if raw:
-            parsed = json.loads(raw)
-            for entry in parsed.get("nodes", []):
-                nid = entry.get("id") or entry.get("num")
-                long_name = entry.get("longName") or entry.get("user", {}).get("longName")
-                short_name = entry.get("shortName") or entry.get("user", {}).get("shortName")
-                if nid:
-                    names[str(nid)] = long_name or short_name or str(nid)
+            parsed = None
+            try:
+                parsed = json.loads(raw)
+            except Exception:
+                parsed = None
+            if parsed:
+                for entry in parsed.get("nodes", []):
+                    nid = entry.get("id") or entry.get("num") or entry.get("user", {}).get("id")
+                    long_name = entry.get("longName") or entry.get("user", {}).get("longName")
+                    short_name = entry.get("shortName") or entry.get("user", {}).get("shortName")
+                    if nid:
+                        nid_str = str(nid)
+                        _add_name(nid_str, long_name or short_name or nid_str)
+            else:
+                for entry in _parse_nodes_table(raw):
+                    nid = entry.get("id")
+                    if not nid:
+                        continue
+                    name = entry.get("name") or str(nid)
+                    _add_name(str(nid), name)
     except Exception:
         pass
     return names
@@ -945,6 +967,7 @@ def meshtastic_messages():
                 except Exception:
                     ch_idx = None
                 channel = entry.get("channel") or channel_map.get(ch_idx, "Primary")
+                direct = bool(to_id and to_id not in ("^all", "^local"))
                 items.append({
                     "timestamp": ts,
                     "from": from_id,
@@ -954,6 +977,7 @@ def meshtastic_messages():
                     "text": text,
                     "channel": channel,
                     "channelIndex": ch_idx,
+                    "direct": direct,
                 })
         except Exception:
             items = []
