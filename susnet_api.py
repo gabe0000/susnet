@@ -995,8 +995,20 @@ def meshtastic_messages():
                 })
         except Exception:
             items = []
+    def _ts_key(msg: Dict[str, Any]) -> float:
+        ts_val = msg.get("timestamp") or msg.get("rxTime")
+        if isinstance(ts_val, (int, float)):
+            return float(ts_val)
+        if isinstance(ts_val, str):
+            try:
+                return datetime.fromisoformat(ts_val.replace("Z", "+00:00")).timestamp()
+            except Exception:
+                return 0.0
+        return 0.0
+    if items:
+        items.sort(key=_ts_key, reverse=True)
     lines = _tail_lines(MESHTASTIC_MESSAGES, 200)
-    return {"ok": True, "lines": lines[::-1], "items": items[::-1] if items else []}
+    return {"ok": True, "lines": lines[::-1], "items": items}
 
 
 @app.get("/api/meshtastic/telemetry")
