@@ -21,5 +21,6 @@ Current key files:
 - `DesignConsiderations.md` – overarching requirements and constraints.
 - `ReplicationGuide.md` – how to build another box (WIP).
 - `../Troubleshooting/` (top-level) – support tickets and resolutions.
+- `UpdatePlaybook.md` – step-by-step for “update everything” (docs-only publishes, coding agent guardrails).
 
 Add new files as needed, but keep the structure predictable so others can follow along.
