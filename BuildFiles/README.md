@@ -14,14 +14,15 @@ Every document should reinforce:
 3. How to replicate or extend it.
 4. What to change or improve next time.
 
-Current key files:
+Current key files and folders:
 - `../Journal/` (top-level) – daily wins/losses/lessons, one file per entry.
 - `BuilderNotes.md` – subsystem deep dives (APRS RF experiments, Pi split, etc.).
 - `IdeaBacklog.md` / `FeatureRoadmap.md` – pipeline from brainstorming to delivery.
 - `DesignConsiderations.md` – overarching requirements and constraints.
 - `ReplicationGuide.md` – how to build another box (WIP).
 - `../Troubleshooting/` (top-level) – support tickets and resolutions.
-- `UpdatePlaybook.md` – step-by-step for “update everything” (docs-only publishes, coding agent guardrails).
+- `Agents/` – coding-agent playbooks (`UpdatePlaybook.md`, `AgentOps.md`, folder README).
+- `Human/` – human-facing notes/checklists (folder README).
 
 GitHub (`origin` → https://github.com/gabe0000/susnet) is **documentation only**; keep code, binaries, logs, venvs, and secrets local. Always verify staged files before pushing.
 
