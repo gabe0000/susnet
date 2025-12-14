@@ -25,4 +25,6 @@ Current key files:
 
 GitHub (`origin` → https://github.com/gabe0000/susnet) is **documentation only**; keep code, binaries, logs, venvs, and secrets local. Always verify staged files before pushing.
 
+Local helper: `/home/gabe0000/restart_susnet.sh` restarts susnet-api, meshtastic listener/APRS, dvSwitch mode switcher, and Asterisk after changes.
+
 Add new files as needed, but keep the structure predictable so others can follow along.

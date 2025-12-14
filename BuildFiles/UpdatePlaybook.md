@@ -36,3 +36,4 @@ Use this when asked to “update everything” and keep GitHub limited to docume
 - Keep changes scoped to the files discussed in the session; do not roam.
 - Document assumptions; ask before making irreversible changes.
 - Public pushes are **documentation only**: no code, no logs, no credentials, no binaries, no venv/caches. Double-check staged files before pushing.
+- After fixes, restart services with `/home/gabe0000/restart_susnet.sh` (local only) to ensure browser/UI is current.
