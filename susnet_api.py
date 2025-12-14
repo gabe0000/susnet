@@ -959,7 +959,7 @@ def meshtastic_messages():
     if MESHTASTIC_JSON.exists():
         try:
             data = json.loads(MESHTASTIC_JSON.read_text())
-            for entry in data[-200:]:
+            for entry in data[-500:]:
                 if not isinstance(entry, dict):
                     continue
                 ts = entry.get("timestamp")

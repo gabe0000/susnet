@@ -8,7 +8,7 @@ Locations
 - Restart all services if things look stale: run /home/gabe0000/restart_susnet.sh (local helper).
 
 Meshtastic usage
-- Messages pane shows channel (or “DM”), sender → recipient for direct messages, path (RF/MQTT), timestamp, and body. The UI auto-refreshes messages/telemetry about every 5 seconds and also right after you send. Names favor the friendly long names from the node list.
+- Messages pane shows channel (or “DM”), sender → recipient for direct messages, path (RF/MQTT), timestamp, and body. The UI auto-refreshes messages/telemetry about every 5 seconds and also right after you send. Names favor the friendly long names from the node list. The server retains ~500 messages; the UI shows the latest ~50 in a scrollable log.
 - Names: should display friendly names; if an ID like !9e77f1a0 shows, the backend couldn’t resolve the name yet (usually connectivity to the node list).
 - Sending messages:
   - “Dest (optional)” dropdown: pick a node for a direct message, or leave blank for channel broadcast.

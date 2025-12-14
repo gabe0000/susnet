@@ -15,7 +15,7 @@ UI specifics (Meshtastic)
 - Channel dropdown: populated from topology channel_details; UI sends both channel_name and channel_index.
 - Filters: DM, MQTT-only, RF-only, hide NC Mesh, channel chips. Channel prefs (mute/solo msg/TTS) stored locally and persisted via /api/meshtastic/prefs.
 - Logs: messages from /api/meshtastic/messages (messages.json + name map), telemetry from /api/meshtastic/telemetry (mesh.log).
-- Live updates: UI polls /api/meshtastic/messages + /api/meshtastic/telemetry every 5s and after sends; no websocket required. UI now prefers long names over IDs (uses topo map when API names are IDs).
+- Live updates: UI polls /api/meshtastic/messages + /api/meshtastic/telemetry every 5s and after sends; no websocket required. Server retains ~500 messages; UI shows the latest 50 in a scrollable box. UI prefers long names over IDs (uses topo map when API names are IDs).
 
 Backend notes
 - _mesh_name_lookup merges fallback IDs with live `meshtastic --nodes` (JSON or table output) to supply long names. Requires TCP host reachable or serial fallback. If names regress to IDs, check the host in susnet_api.py and connectivity.

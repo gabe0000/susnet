@@ -182,7 +182,7 @@
         </div>
         <div class="split"></div>
         <div class="tag">Messages</div>
-        <div class="log" id="meshMessages" style="max-height:340px"></div>
+        <div class="log" id="meshMessages" style="max-height:340px; overflow-y:auto"></div>
         <div class="split"></div>
       <div class="tag">Telemetry</div>
       <div class="log" id="meshTelemetry"></div>
@@ -497,7 +497,7 @@
 
     function filterMeshMessages(msgs){ const f=state.mesh.filters; const prefs=state.mesh.channelPrefs||{}; const activeSoloMsg = Object.values(prefs).some(p=>p.soloMsg); const activeSoloTts = Object.values(prefs).some(p=>p.soloTts); const search = (f.search||'').toLowerCase(); return (msgs||[]).filter(m=>{ const channel = (m.channel||'').toLowerCase(); const cp = prefs[m.channel||''] || {muteMsg:false,muteTts:false,soloMsg:false,soloTts:false}; if(f.channel && channel !== f.channel.toLowerCase()) return false; if(f.hideNcmesh && /nc\s?mesh/i.test(channel)) return false; const viaMqtt = !!(m.via_mqtt || m.via === 'mqtt'); if(f.mqtt && !viaMqtt) return false; if(f.rf && viaMqtt) return false; if(f.dm){ const toId = (m.to||'') || ''; if(!toId || toId === '^all' || toId === '^local') return false; } if(cp.muteMsg) return false; if(activeSoloMsg && !cp.soloMsg) return false; if(activeSoloTts && !cp.soloTts && !cp.soloMsg) { /* skip messages for TTS-only solo? UI view still shows unless soloMsg*/ } if(search){ const hay = `${m.text||''} ${m.from||''} ${m.from_name||''} ${nicknameForNode(m.from||'', m.from_name||'')}`.toLowerCase(); if(!hay.includes(search)) return false; } return true; }); }
 
-    async function refreshMeshMessagesOnly(){ if(!guardActive()) return; try{ const msgs=await api('/api/meshtastic/messages'); const items=msgs.items||[]; state.mesh.messages = items.length ? items.slice(0,200) : (msgs.lines||[]).slice(0,200); const tele=await api('/api/meshtastic/telemetry'); state.mesh.telemetry = (tele.lines||[]).slice(0,100); renderMeshLogs(); } catch(e){ /* swallow polling errors */ } }
+    async function refreshMeshMessagesOnly(){ if(!guardActive()) return; try{ const msgs=await api('/api/meshtastic/messages'); const items=msgs.items||[]; state.mesh.messages = items.length ? items.slice(0,50) : (msgs.lines||[]).slice(0,50); const tele=await api('/api/meshtastic/telemetry'); state.mesh.telemetry = (tele.lines||[]).slice(0,100); renderMeshLogs(); } catch(e){ /* swallow polling errors */ } }
     function startMeshPoll(intervalMs=5000){ if(state.mesh.pollId){ clearInterval(state.mesh.pollId); } state.mesh.pollId = setInterval(()=>{ refreshMeshMessagesOnly(); }, intervalMs); }
     function stopMeshPoll(){ if(state.mesh.pollId){ clearInterval(state.mesh.pollId); state.mesh.pollId=null; } }
 
@@ -557,7 +557,7 @@
       });
     }
 
-    async function refreshMesh(){ if(!guardActive()) return; try{ await loadMeshFavs(); const topo=await api('/api/meshtastic/topology'); state.mesh.topo = topo.nodes||[]; state.mesh.channelDetails = topo.channel_details||[]; state.mesh.channels = topo.channels||state.mesh.channelDetails.map(ch=>ch.name).filter(Boolean); const msgs=await api('/api/meshtastic/messages'); const items=msgs.items||[]; state.mesh.messages = items.length ? items.slice(0,200) : (msgs.lines||[]).slice(0,200); const tele=await api('/api/meshtastic/telemetry'); state.mesh.telemetry = (tele.lines||[]).slice(0,100); renderMeshDestSelect(); renderMeshChannels(); renderMeshSendChannel(); renderMeshFilterChips(); renderMeshLogs(); renderMeshProfiles(); startMeshPoll(5000); log('<b>Mesh/APRS refreshed</b>'); } catch(e){ log(`<b style="color:#ff9abf">Mesh/APRS error</b> ${e.message}`); }}
+    async function refreshMesh(){ if(!guardActive()) return; try{ await loadMeshFavs(); const topo=await api('/api/meshtastic/topology'); state.mesh.topo = topo.nodes||[]; state.mesh.channelDetails = topo.channel_details||[]; state.mesh.channels = topo.channels||state.mesh.channelDetails.map(ch=>ch.name).filter(Boolean); const msgs=await api('/api/meshtastic/messages'); const items=msgs.items||[]; state.mesh.messages = items.length ? items.slice(0,50) : (msgs.lines||[]).slice(0,50); const tele=await api('/api/meshtastic/telemetry'); state.mesh.telemetry = (tele.lines||[]).slice(0,100); renderMeshDestSelect(); renderMeshChannels(); renderMeshSendChannel(); renderMeshFilterChips(); renderMeshLogs(); renderMeshProfiles(); startMeshPoll(5000); log('<b>Mesh/APRS refreshed</b>'); } catch(e){ log(`<b style="color:#ff9abf">Mesh/APRS error</b> ${e.message}`); }}
     async function sendMesh(){
       if(!guardActive()) return;
       const msg=($('#meshMsg')?.value||'').trim();
