@@ -468,6 +468,10 @@
       const details = (state.mesh.channelDetails && state.mesh.channelDetails.length)
         ? state.mesh.channelDetails
         : (state.mesh.channels||[]).map((name,idx)=>({name,index:idx}));
+      if(!details.length){
+        const opt=document.createElement('option'); opt.value=''; opt.textContent='(loading channels…)'; sel.appendChild(opt);
+        return;
+      }
       details.forEach((ch)=>{ if(!ch || !ch.name) return; const opt=document.createElement('option'); opt.value=ch.name; const hasIdx = ch.index !== undefined && ch.index !== null && ch.index !== ''; opt.textContent = hasIdx ? `${ch.name} (#${ch.index})` : ch.name; if(hasIdx) opt.dataset.index = ch.index; sel.appendChild(opt); });
     }
 
@@ -563,8 +567,8 @@
     function renderMeshDestSelect(){
       const sel=$('#meshTo'); if(!sel) return;
       sel.innerHTML='';
-      const optAny=document.createElement('option'); optAny.value=''; optAny.textContent='(broadcast)'; sel.appendChild(optAny);
       const nodes=state.mesh.topo||[];
+      const optAny=document.createElement('option'); optAny.value=''; optAny.textContent=nodes.length ? '(broadcast)' : '(loading nodes…)'; sel.appendChild(optAny);
       nodes.forEach(n=>{
         const opt=document.createElement('option');
         opt.value=n.id;
