@@ -971,7 +971,14 @@ def meshtastic_messages():
                     ch_idx = int(ch_idx) if ch_idx is not None else None
                 except Exception:
                     ch_idx = None
-                channel = entry.get("channel") or channel_map.get(ch_idx, "Primary")
+                raw_channel = entry.get("channel")
+                channel = raw_channel or channel_map.get(ch_idx, "Primary")
+                try:
+                    as_int = int(str(raw_channel)) if raw_channel is not None else None
+                    if as_int is not None and as_int in channel_map:
+                        channel = channel_map[as_int]
+                except Exception:
+                    pass
                 direct = bool(to_id and to_id not in ("^all", "^local"))
                 from_name = _name_for(from_id)
                 to_name = _name_for(to_id) if to_id else ""

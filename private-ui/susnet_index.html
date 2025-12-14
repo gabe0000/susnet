@@ -489,7 +489,23 @@
       const n = topo.find(n=>n.id===id || (alt && n.id===alt));
       return (n && n.name) ? n.name : (trimmedFrom || id || 'unknown');
     }
-    function channelLabel(channel, idx){ const details = state.mesh.channelDetails||[]; if(idx!==undefined && idx!==null){ const hit = details.find(d=>String(d.index)===String(idx)); if(hit && hit.name) return hit.name; } if(typeof channel==='number'){ const hit = details.find(d=>String(d.index)===String(channel)); if(hit && hit.name) return hit.name; } const byName = details.find(d=>d.name===channel); if(byName) return byName.name; return channel || 'Primary'; }
+    function channelLabel(channel, idx){
+      const details = state.mesh.channelDetails||[];
+      if(idx!==undefined && idx!==null){
+        const hit = details.find(d=>String(d.index)===String(idx));
+        if(hit && hit.name) return hit.name;
+      }
+      if(typeof channel==='number' || (!isNaN(Number(channel)) && channel!=='')){
+        const num = Number(channel);
+        const hit = details.find(d=>String(d.index)===String(num));
+        if(hit && hit.name) return hit.name;
+        const names = state.mesh.channels||[];
+        if(num>=0 && num<names.length && names[num]) return names[num];
+      }
+      const byName = details.find(d=>d.name===channel);
+      if(byName) return byName.name;
+      return channel || 'Primary';
+    }
     function loadChannelPrefs(){ try{ const raw=localStorage.getItem(MESH_CHANNEL_PREF_KEY); state.mesh.channelPrefs = raw ? JSON.parse(raw) : {}; } catch(e){ state.mesh.channelPrefs = {}; } }
     function saveChannelPrefs(){ try{ localStorage.setItem(MESH_CHANNEL_PREF_KEY, JSON.stringify(state.mesh.channelPrefs||{})); } catch(e){} }
 
