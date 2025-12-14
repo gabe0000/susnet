@@ -170,12 +170,12 @@
           <div class="chip" data-mesh-filter="rf">RF only</div>
           <div class="chip active" data-mesh-filter="ncmesh">Hide NC Mesh</div>
         </div>
-        <div class="row" style="margin-top:10px">
-          <div class="field" style="flex:2 1 auto"><label>Dest (optional)</label><input id="meshTo" placeholder="node" /></div>
-          <div class="field" style="flex:1 1 160px"><label>Channel</label><select id="meshSendChannel" style="all:unset; color:var(--text); width:100%"></select></div>
-          <div class="field" style="flex:3 1 auto"><label>Message</label><input id="meshMsg" placeholder="Text" /></div>
-          <button class="btn btn-cyan" id="meshSend">Send</button>
-        </div>
+      <div class="row" style="margin-top:10px">
+        <div class="field" style="flex:2 1 auto"><label>Dest (optional)</label><select id="meshTo" style="all:unset; color:var(--text); width:100%"></select></div>
+        <div class="field" style="flex:1 1 160px"><label>Channel</label><select id="meshSendChannel" style="all:unset; color:var(--text); width:100%"></select></div>
+        <div class="field" style="flex:3 1 auto"><label>Message</label><input id="meshMsg" placeholder="Text" /></div>
+        <button class="btn btn-cyan" id="meshSend">Send</button>
+      </div>
         <div class="row" style="gap:10px; margin-top:6px">
           <span class="tag" id="meshFilterSummary">Filter: all channels</span>
           <span class="tag">Send channel = dropdown above (blank = default)</span>
@@ -479,6 +479,7 @@
 
     function nicknameForNode(id, fallback){ const p = state.mesh.profiles?.[id] || {}; return p.nickname?.trim() || fallback || id; }
     function displayNameForNode(id, fromName){ const prof = state.mesh.profiles?.[id] || {}; if(prof.nickname) return prof.nickname; if(fromName) return fromName; const topo = state.mesh.topo || []; const n = topo.find(n=>n.id===id); return (n && n.name) ? n.name : (id||'unknown'); }
+    function channelLabel(channel, idx){ const details = state.mesh.channelDetails||[]; if(idx!==undefined && idx!==null){ const hit = details.find(d=>String(d.index)===String(idx)); if(hit && hit.name) return hit.name; } if(typeof channel==='number'){ const hit = details.find(d=>String(d.index)===String(channel)); if(hit && hit.name) return hit.name; } const byName = details.find(d=>d.name===channel); if(byName) return byName.name; return channel || 'Primary'; }
     function loadChannelPrefs(){ try{ const raw=localStorage.getItem(MESH_CHANNEL_PREF_KEY); state.mesh.channelPrefs = raw ? JSON.parse(raw) : {}; } catch(e){ state.mesh.channelPrefs = {}; } }
     function saveChannelPrefs(){ try{ localStorage.setItem(MESH_CHANNEL_PREF_KEY, JSON.stringify(state.mesh.channelPrefs||{})); } catch(e){} }
 
@@ -487,7 +488,7 @@
     function filterMeshMessages(msgs){ const f=state.mesh.filters; const prefs=state.mesh.channelPrefs||{}; const activeSoloMsg = Object.values(prefs).some(p=>p.soloMsg); const activeSoloTts = Object.values(prefs).some(p=>p.soloTts); const search = (f.search||'').toLowerCase(); return (msgs||[]).filter(m=>{ const channel = (m.channel||'').toLowerCase(); const cp = prefs[m.channel||''] || {muteMsg:false,muteTts:false,soloMsg:false,soloTts:false}; if(f.channel && channel !== f.channel.toLowerCase()) return false; if(f.hideNcmesh && /nc\s?mesh/i.test(channel)) return false; const viaMqtt = !!(m.via_mqtt || m.via === 'mqtt'); if(f.mqtt && !viaMqtt) return false; if(f.rf && viaMqtt) return false; if(f.dm){ const toId = (m.to||'') || ''; if(!toId || toId === '^all' || toId === '^local') return false; } if(cp.muteMsg) return false; if(activeSoloMsg && !cp.soloMsg) return false; if(activeSoloTts && !cp.soloTts && !cp.soloMsg) { /* skip messages for TTS-only solo? UI view still shows unless soloMsg*/ } if(search){ const hay = `${m.text||''} ${m.from||''} ${m.from_name||''} ${nicknameForNode(m.from||'', m.from_name||'')}`.toLowerCase(); if(!hay.includes(search)) return false; } return true; }); }
 
     function renderMeshLogs(){ const box=$('#meshMessages'); if(!box) return; const msgs=state.mesh.messages||[]; const filtered = msgs.length && typeof msgs[0]==='object' ? filterMeshMessages(msgs) : msgs;
-      if(filtered.length && typeof filtered[0]==='object'){ box.innerHTML = filtered.map(m=>{ const rawName = m.from_name || m.from || 'unknown'; const name = displayNameForNode(m.from||'', rawName); const ch = m.channel || 'Primary'; const ts = formatTsHuman(m.timestamp || (m.rxTime? m.rxTime*1000 : Date.now())); const body = m.text || ''; const via = m.via_mqtt ? 'MQTT' : 'RF'; return `<div class="log-entry"><div class="row" style="gap:8px; align-items:center; margin-bottom:4px"><span class="pill">${esc(ch)}</span><span class="pill">${esc(name)}</span><span class="pill">${via}</span></div><div class="ts">${ts}</div><div>${esc(body)}</div></div>`; }).join('') || '<span class="tag">No messages</span>'; } else { box.innerHTML=renderLogLines(filtered) || '<span class="tag">No messages</span>'; } $('#meshTelemetry').innerHTML=renderLogLines(state.mesh.telemetry) || '<span class="tag">No telemetry</span>'; const status=$('#meshStatusTag'); if(status) status.textContent = `Messages: ${filtered.length}`; updateMeshFilterSummary(filtered.length, msgs.length); }
+      if(filtered.length && typeof filtered[0]==='object'){ box.innerHTML = filtered.map(m=>{ const rawName = m.from_name || m.from || 'unknown'; const name = displayNameForNode(m.from||'', rawName); const ch = channelLabel(m.channel, m.channelIndex); const ts = formatTsHuman(m.timestamp || (m.rxTime? m.rxTime*1000 : Date.now())); const body = m.text || ''; const via = m.via_mqtt ? 'MQTT' : 'RF'; return `<div class="log-entry"><div class="row" style="gap:8px; align-items:center; margin-bottom:4px"><span class="pill">${esc(ch)}</span><span class="pill">${esc(name)}</span><span class="pill">${via}</span></div><div class="ts">${ts}</div><div>${esc(body)}</div></div>`; }).join('') || '<span class="tag">No messages</span>'; } else { box.innerHTML=renderLogLines(filtered) || '<span class="tag">No messages</span>'; } $('#meshTelemetry').innerHTML=renderLogLines(state.mesh.telemetry) || '<span class="tag">No telemetry</span>'; const status=$('#meshStatusTag'); if(status) status.textContent = `Messages: ${filtered.length}`; updateMeshFilterSummary(filtered.length, msgs.length); }
 
     async function loadMeshPrefs(){ try{ const {prefs}=await api('/api/meshtastic/prefs'); state.mesh.channelPrefs = prefs.channels||{}; state.mesh.profiles = prefs.profiles||{}; } catch(e){ try{ const raw = localStorage.getItem(MESH_CHANNEL_PREF_KEY); if(raw) state.mesh.channelPrefs = JSON.parse(raw); } catch(_){} try{ const rawp = localStorage.getItem(MESH_PROFILE_KEY); if(rawp) state.mesh.profiles = JSON.parse(rawp); } catch(_){} } }
     function saveMeshPrefsLocal(){ try{ localStorage.setItem(MESH_CHANNEL_PREF_KEY, JSON.stringify(state.mesh.channelPrefs||{})); localStorage.setItem(MESH_PROFILE_KEY, JSON.stringify(state.mesh.profiles||{})); } catch(e){} }
@@ -501,7 +502,20 @@
 
     async function saveMeshProfile(){ const id = state.mesh.profileEditingId; if(!id) return; const nick = ($('#meshProfileNickname')?.value||'').trim(); const notes = ($('#meshProfileNotes')?.value||'').trim(); state.mesh.profiles = state.mesh.profiles || {}; state.mesh.profiles[id] = { nickname:nick, notes:notes }; await persistMeshPrefs({profiles:{[id]:{nickname:nick, notes:notes}}}); closeMeshProfile(); renderMeshLogs(); renderMeshProfiles(); }
 
-    async function refreshMesh(){ if(!guardActive()) return; try{ await loadMeshFavs(); const topo=await api('/api/meshtastic/topology'); state.mesh.topo = topo.nodes||[]; state.mesh.channelDetails = topo.channel_details||[]; state.mesh.channels = topo.channels||state.mesh.channelDetails.map(ch=>ch.name).filter(Boolean); const msgs=await api('/api/meshtastic/messages'); const items=msgs.items||[]; state.mesh.messages = items.length ? items.slice(0,200) : (msgs.lines||[]).slice(0,200); const tele=await api('/api/meshtastic/telemetry'); state.mesh.telemetry = (tele.lines||[]).slice(0,100); renderMeshChannels(); renderMeshSendChannel(); renderMeshFilterChips(); renderMeshLogs(); renderMeshProfiles(); log('<b>Mesh/APRS refreshed</b>'); } catch(e){ log(`<b style="color:#ff9abf">Mesh/APRS error</b> ${e.message}`); }}
+    function renderMeshDestSelect(){
+      const sel=$('#meshTo'); if(!sel) return;
+      sel.innerHTML='';
+      const optAny=document.createElement('option'); optAny.value=''; optAny.textContent='(broadcast)'; sel.appendChild(optAny);
+      const nodes=state.mesh.topo||[];
+      nodes.forEach(n=>{
+        const opt=document.createElement('option');
+        opt.value=n.id;
+        opt.textContent=n.name || n.id;
+        sel.appendChild(opt);
+      });
+    }
+
+    async function refreshMesh(){ if(!guardActive()) return; try{ await loadMeshFavs(); const topo=await api('/api/meshtastic/topology'); state.mesh.topo = topo.nodes||[]; state.mesh.channelDetails = topo.channel_details||[]; state.mesh.channels = topo.channels||state.mesh.channelDetails.map(ch=>ch.name).filter(Boolean); const msgs=await api('/api/meshtastic/messages'); const items=msgs.items||[]; state.mesh.messages = items.length ? items.slice(0,200) : (msgs.lines||[]).slice(0,200); const tele=await api('/api/meshtastic/telemetry'); state.mesh.telemetry = (tele.lines||[]).slice(0,100); renderMeshDestSelect(); renderMeshChannels(); renderMeshSendChannel(); renderMeshFilterChips(); renderMeshLogs(); renderMeshProfiles(); log('<b>Mesh/APRS refreshed</b>'); } catch(e){ log(`<b style="color:#ff9abf">Mesh/APRS error</b> ${e.message}`); }}
     async function sendMesh(){
       if(!guardActive()) return;
       const msg=($('#meshMsg')?.value||'').trim();
