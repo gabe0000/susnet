@@ -942,6 +942,11 @@ def mode_status():
 def meshtastic_messages():
     items: List[Dict[str, Any]] = []
     name_map = _mesh_name_lookup()
+    def _name_for(nid: Optional[str]) -> str:
+        if not nid:
+            return ""
+        stripped = nid.lstrip("!")
+        return name_map.get(nid) or name_map.get(stripped) or nid
     channel_map: Dict[int, str] = {}
     try:
         for entry in MESHTASTIC_CHANNELS:
@@ -968,12 +973,14 @@ def meshtastic_messages():
                     ch_idx = None
                 channel = entry.get("channel") or channel_map.get(ch_idx, "Primary")
                 direct = bool(to_id and to_id not in ("^all", "^local"))
+                from_name = _name_for(from_id)
+                to_name = _name_for(to_id) if to_id else ""
                 items.append({
                     "timestamp": ts,
                     "from": from_id,
-                    "from_name": name_map.get(from_id, from_id),
+                    "from_name": from_name,
                     "to": to_id,
-                    "to_name": name_map.get(to_id, to_id),
+                    "to_name": to_name,
                     "text": text,
                     "channel": channel,
                     "channelIndex": ch_idx,

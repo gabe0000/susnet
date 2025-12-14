@@ -503,12 +503,12 @@
           const fromName = displayNameForNode(m.from||'', rawFrom);
           const toName = m.to ? displayNameForNode(m.to||'', rawTo) : '';
           const isDirect = !!(m.direct || (m.to && m.to !== '^all' && m.to !== '^local'));
-          const chName = channelLabel(m.channel, m.channelIndex);
+          const chName = isDirect ? '' : channelLabel(m.channel, m.channelIndex);
           const ts = formatTsHuman(m.timestamp || (m.rxTime? m.rxTime*1000 : Date.now()));
           const body = m.text || '';
           const via = m.via_mqtt ? 'MQTT' : 'RF';
           const route = isDirect && toName ? `${esc(fromName)} → ${esc(toName)}` : esc(fromName);
-          const channelPill = isDirect ? `<span class="pill">DM</span>${chName ? `<span class="pill">${esc(chName)}</span>`:''}` : `<span class="pill">${esc(chName)}</span>`;
+          const channelPill = isDirect ? `<span class="pill">DM</span>` : `<span class="pill">${esc(chName)}</span>`;
           return `<div class="log-entry"><div class="row" style="gap:8px; align-items:center; margin-bottom:4px">${channelPill}<span class="pill">${route}</span><span class="pill">${esc(via)}</span></div><div class="ts">${ts}</div><div>${esc(body)}</div></div>`;
         }).join('') || '<span class="tag">No messages</span>';
       } else {
