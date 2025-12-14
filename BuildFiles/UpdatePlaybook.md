@@ -1,6 +1,6 @@
 # Update Playbook (Docs-Only)
 
-Use this when asked to “update everything” and keep GitHub limited to documentation only. No code, secrets, or private data should be published.
+Use this when asked to “update everything” and keep GitHub limited to documentation only. No code, secrets, or private data should be published. Local repo can hold everything; the GitHub repo (`origin` → https://github.com/gabe0000/susnet) must stay docs-only.
 
 ## What “update everything” means
 - Verify local changes are complete and tested.
@@ -23,8 +23,9 @@ Use this when asked to “update everything” and keep GitHub limited to docume
    - Keep references to commands minimal and non-destructive (e.g., `git status`, `git diff`).
 5. **GitHub step (docs only)**
    - Stage and commit **only** documentation files (e.g., files under `BuildFiles/`, README updates).
-   - Verify the commit contains no source code files or generated artifacts.
-   - Push documentation branch to the remote GitHub repo.
+   - Before pushing: `git status --short` to confirm only doc files are staged/committed.
+   - If the working tree has other changes, stash only the tracked ones you need for the pull: `git stash push -m "temp-rebase" <paths>`; do **not** stash huge untracked trees (venv, caches).
+   - `git pull --rebase --autostash origin master` if needed, then `git push origin master`.
 6. **Close-out**
    - Leave a brief local note (in `BuildFiles` or Journal) about what was published and any pending work.
    - If something could not be done, document blockers and next actions.
@@ -34,3 +35,4 @@ Use this when asked to “update everything” and keep GitHub limited to docume
 - Prefer read-only inspection commands unless explicitly approved to modify or restart services.
 - Keep changes scoped to the files discussed in the session; do not roam.
 - Document assumptions; ask before making irreversible changes.
+- Public pushes are **documentation only**: no code, no logs, no credentials, no binaries, no venv/caches. Double-check staged files before pushing.

@@ -23,4 +23,6 @@ Current key files:
 - `../Troubleshooting/` (top-level) – support tickets and resolutions.
 - `UpdatePlaybook.md` – step-by-step for “update everything” (docs-only publishes, coding agent guardrails).
 
+GitHub (`origin` → https://github.com/gabe0000/susnet) is **documentation only**; keep code, binaries, logs, venvs, and secrets local. Always verify staged files before pushing.
+
 Add new files as needed, but keep the structure predictable so others can follow along.
