@@ -171,7 +171,7 @@
           <div class="chip active" data-mesh-filter="ncmesh">Hide NC Mesh</div>
         </div>
       <div class="row" style="margin-top:10px">
-        <div class="field" style="flex:2 1 auto"><label>Dest (optional)</label><select id="meshTo" style="width:100%"></select></div>
+        <div class="field" style="flex:2 1 auto"><label>Destination (optional)</label><select id="meshTo" style="width:100%"></select></div>
         <div class="field" style="flex:1 1 160px"><label>Channel</label><select id="meshSendChannel" style="width:100%"></select></div>
         <div class="field" style="flex:3 1 auto"><label>Message</label><input id="meshMsg" placeholder="Text" /></div>
         <button class="btn btn-cyan" id="meshSend">Send</button>
@@ -513,7 +513,36 @@
     function loadChannelPrefs(){ try{ const raw=localStorage.getItem(MESH_CHANNEL_PREF_KEY); state.mesh.channelPrefs = raw ? JSON.parse(raw) : {}; } catch(e){ state.mesh.channelPrefs = {}; } }
     function saveChannelPrefs(){ try{ localStorage.setItem(MESH_CHANNEL_PREF_KEY, JSON.stringify(state.mesh.channelPrefs||{})); } catch(e){} }
 
-    async function openChannelPrefs(ch){ const prefs = state.mesh.channelPrefs[ch] || {muteMsg:false,muteTts:false,soloMsg:false,soloTts:false}; const body = prompt(`Channel ${ch} prefs (m:mute msg, t:mute tts, sm:solo msg, st:solo tts)\nEnter any combination separated by commas.\nCurrent: ${JSON.stringify(prefs)}`, ['muteMsg','muteTts','soloMsg','soloTts'].filter(k=>prefs[k]).join(',')); if(body===null) return; const tokens=(body||'').split(',').map(s=>s.trim().toLowerCase()).filter(Boolean); const next={muteMsg:false,muteTts:false,soloMsg:false,soloTts:false}; tokens.forEach(t=>{ if(t==='m'||t==='mutemsg') next.muteMsg=true; if(t==='t'||t==='mutetts') next.muteTts=true; if(t==='sm'||t==='solomsg') next.soloMsg=true; if(t==='st'||t==='solotts') next.soloTts=true; }); state.mesh.channelPrefs[ch]=next; await persistMeshPrefs({channels:{[ch]:next}}); renderMeshChannels(); renderMeshLogs(); }
+    function buildChannelPrefsModal(ch, prefs, onSave){
+      const overlay=document.createElement('div'); overlay.className='modal show'; overlay.style.display='flex'; overlay.style.alignItems='center'; overlay.style.justifyContent='center';
+      const box=document.createElement('div'); box.className='box'; box.style.minWidth='260px';
+      box.innerHTML=`<h3 style="margin-top:0">Channel ${esc(ch)} Preferences</h3>
+        <div class="row" style="flex-direction:column; gap:8px; align-items:flex-start">
+          <label><input type="checkbox" id="pref-muteMsg"> Mute messages</label>
+          <label><input type="checkbox" id="pref-muteTts"> Mute TTS</label>
+          <label><input type="checkbox" id="pref-soloMsg"> Solo messages</label>
+          <label><input type="checkbox" id="pref-soloTts"> Solo TTS</label>
+        </div>
+        <div class="row" style="margin-top:12px; gap:8px">
+          <button class="btn btn-cyan" id="prefSave">Save</button>
+          <button class="btn btn-gray" id="prefCancel">Cancel</button>
+        </div>`;
+      overlay.appendChild(box);
+      document.body.appendChild(overlay);
+      document.body.classList.add('modal-open');
+      ['muteMsg','muteTts','soloMsg','soloTts'].forEach(k=>{ const cb=box.querySelector(`#pref-${k}`); if(cb) cb.checked=!!prefs[k]; });
+      box.querySelector('#prefSave').onclick=()=>{ const next={muteMsg:box.querySelector('#pref-muteMsg').checked, muteTts:box.querySelector('#pref-muteTts').checked, soloMsg:box.querySelector('#pref-soloMsg').checked, soloTts:box.querySelector('#pref-soloTts').checked}; onSave(next); document.body.classList.remove('modal-open'); overlay.remove(); };
+      box.querySelector('#prefCancel').onclick=()=>{ document.body.classList.remove('modal-open'); overlay.remove(); };
+    }
+
+    async function openChannelPrefs(ch){
+      const prefs = state.mesh.channelPrefs[ch] || {muteMsg:false,muteTts:false,soloMsg:false,soloTts:false};
+      buildChannelPrefsModal(ch, prefs, async (next)=>{
+        state.mesh.channelPrefs[ch]=next;
+        await persistMeshPrefs({channels:{[ch]:next}});
+        renderMeshChannels(); renderMeshLogs();
+      });
+    }
 
     function filterMeshMessages(msgs){ const f=state.mesh.filters; const prefs=state.mesh.channelPrefs||{}; const activeSoloMsg = Object.values(prefs).some(p=>p.soloMsg); const activeSoloTts = Object.values(prefs).some(p=>p.soloTts); const search = (f.search||'').toLowerCase(); return (msgs||[]).filter(m=>{ const channel = (m.channel||'').toLowerCase(); const cp = prefs[m.channel||''] || {muteMsg:false,muteTts:false,soloMsg:false,soloTts:false}; if(f.channel && channel !== f.channel.toLowerCase()) return false; if(f.hideNcmesh && /nc\s?mesh/i.test(channel)) return false; const viaMqtt = !!(m.via_mqtt || m.via === 'mqtt'); if(f.mqtt && !viaMqtt) return false; if(f.rf && viaMqtt) return false; if(f.dm){ const toId = (m.to||'') || ''; if(!toId || toId === '^all' || toId === '^local') return false; } if(cp.muteMsg) return false; if(activeSoloMsg && !cp.soloMsg) return false; if(activeSoloTts && !cp.soloTts && !cp.soloMsg) { /* skip messages for TTS-only solo? UI view still shows unless soloMsg*/ } if(search){ const hay = `${m.text||''} ${m.from||''} ${m.from_name||''} ${nicknameForNode(m.from||'', m.from_name||'')}`.toLowerCase(); if(!hay.includes(search)) return false; } return true; }); }
 

@@ -184,6 +184,18 @@ def _speak_tts(text: str, node: Optional[str] = None) -> None:
     if not text:
         return
     try:
+        name_map = _mesh_name_lookup()
+        def _name_for(nid: str) -> str:
+            if not nid:
+                return ""
+            stripped = nid.lstrip("!")
+            return name_map.get(nid) or name_map.get(stripped) or nid
+        def _replace_ids(msg: str) -> str:
+            return re.sub(r"!([0-9a-fA-F]{6,8})", lambda m: _name_for("!"+m.group(1)), msg)
+        text = _replace_ids(text)
+    except Exception:
+        pass
+    try:
         subprocess.Popen(
             ["sudo", "asl-tts", "-n", target_node, "-t", text],
             stdout=subprocess.DEVNULL,
