@@ -1,22 +1,23 @@
 # Troubleshooting Master Log
 
 ## Open Tickets
-- TKT-1007 [medium] 1007 - link status on allstar (subsystem: allstarq, opened: 2025-12-12)
+- (none)
 
 ## Closed Tickets
-- TKT-1000 [Low] 1000 (closed: 2025-12-11)
-- TKT-1001 [Medium] 1001 - Formatting on mobile (closed: 2025-12-11)
-- TKT-1002 [High] 1002 - User experience (closed: 2025-12-11)
-- TKT-1003 [Medium] 1003 - Support module (closed: 2025-12-11)
-- TKT-1004 [Medium] 1004 - Error with support ticket (closed: 2025-12-11)
-- TKT-1005 [Medium] 1005 - Ticket pop up scrolls weird (closed: 2025-12-11)
+- TKT-1000 [low] 1000 - still only using one channel to send (closed: )
+- TKT-1001 [medium] 1001 - ticket numbers started over? (closed: )
+- TKT-1002 [medium] 1002 - ?aprs listener possibly not started at initilalization (closed: )
+- TKT-1003 [High] 1003 - Figured out messaging (closed: )
+- TKT-1004 [med] 1004 - not listing nodes 66190 and 555121 first like we had done before (closed: )
+- TKT-1005 [high] 1005 - meshtastic node names (closed: )
 - TKT-1006 [Medium] 1006 - Dvswitch favorites throw error (closed: 2025-12-11)
+- TKT-1007 [medium] 1007 - link status on allstar (closed: )
+- TKT-1008 [medium] 1008 - Dest should say destination r. (closed: 2025-12-15)
+- TKT-1009 [high] 1009 - Tts Error (closed: 2025-12-15)
+- TKT-1010 [medium] 1010 - weird tail on aprs (closed: 2025-12-16)
+- TKT-1011 [medium] 1011 - tts on aprs? (closed: 2025-12-16)
+- TKT-1012 [medium] 1012 - test (closed: 2025-12-16)
 
 ## Workflow
 - Create new tickets in `Troubleshooting/open/` (one file per ticket).
 - When resolved, move to `Troubleshooting/closed/` and update status/meta.
-## 2025-12-16 notes
-- APRS: service name aprs-listener; TTS modes added (off/me/all), watch=ALL now gated to avoid chatter. UI has APRS TTS dropdown; callsigns spelled per-character.
-- Meshtastic: message history merges text log to keep entries after restart/refresh.
-- Current open tickets: TKT-1010 (APRS message tail cleanup) and TKT-1011 (APRS TTS pronunciation). TTS chatter gating applied.
-
