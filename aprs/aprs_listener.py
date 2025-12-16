@@ -22,6 +22,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, Tuple
+import subprocess
 
 BASE_DIR = Path(__file__).resolve().parent
 LOG_FILE = BASE_DIR / "aprs.log"
@@ -31,6 +32,8 @@ DEFAULT_PORT = 14580
 DEFAULT_TARGET = "W4VDX-9"
 DEFAULT_FILTER = None  # will be built from target if not provided
 DEFAULT_WATCH = "W4VDX"
+APRS_TTS_ENABLED = str(os.getenv("APRS_TTS", "0")).lower() in ("1", "true", "yes", "on")
+APRS_TTS_NODE = os.getenv("APRS_TTS_NODE") or os.getenv("SUSNET_TTS_NODE") or "66190"
 
 
 def _now() -> str:
@@ -48,6 +51,20 @@ def _log(line: str) -> None:
             f.write(full + "\n")
     except Exception:
         # avoid recursive logging on failure
+        pass
+
+
+def _speak(text: str) -> None:
+    if not APRS_TTS_ENABLED or not text:
+        return
+    try:
+        cleaned = text.replace("APRS", "A.P.R.S.")
+        subprocess.Popen(
+            ["sudo", "asl-tts", "-n", APRS_TTS_NODE, "-t", cleaned],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    except Exception:
         pass
 
 
@@ -119,6 +136,7 @@ def main() -> None:
                     continue
 
                 _log(f"[APRS] {src} -> {addressee} | path={path}: {msg}")
+                _speak(f"APRS message from {src} to {addressee}: {msg}")
 
         except Exception as e:
             _log(f"[WARN] Connection error: {e!r}, retrying in 10s")
