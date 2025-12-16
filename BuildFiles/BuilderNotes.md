@@ -43,3 +43,9 @@
 - Channel controls desired: mute/solo for messaging and TTS per channel; default to hiding noisy public channels (e.g., NC Mesh).
 - Nicknames + notes for favorite nodes should appear in UI and be persisted (ideally server-side so TTS can use them).
 - Action items: add a small API for channel prefs and profiles; have listener honor mute/solo TTS flags and announce using nicknames.
+
+## 2025-12-16
+- APRS listener renamed aprs-listener (separate from Meshtastic); watch=ALL + radius filters; TTS modes off/me/all with callsigns spelled per-character.
+- Meshtastic log now merges text history every fetch to avoid empty logs on refresh/restart.
+- UI updates: APRS path pill popup, APRS TTS dropdown (Off/Me/All), Meshtastic multiline message input and channel name pills.
+

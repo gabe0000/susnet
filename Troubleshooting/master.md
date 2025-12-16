@@ -15,3 +15,8 @@
 ## Workflow
 - Create new tickets in `Troubleshooting/open/` (one file per ticket).
 - When resolved, move to `Troubleshooting/closed/` and update status/meta.
+## 2025-12-16 notes
+- APRS: service name aprs-listener; TTS modes added (off/me/all), watch=ALL now gated to avoid chatter. UI has APRS TTS dropdown; callsigns spelled per-character.
+- Meshtastic: message history merges text log to keep entries after restart/refresh.
+- Current open tickets: TKT-1010 (APRS message tail cleanup) and TKT-1011 (APRS TTS pronunciation). TTS chatter gating applied.
+
