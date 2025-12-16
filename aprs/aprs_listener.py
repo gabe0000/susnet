@@ -88,17 +88,23 @@ def _parse_aprs_message(line: str) -> Optional[Tuple[str, str, str, str]]:
     return src, addressee, msg, path
 
 
-def _pronounce_digits(text: str) -> str:
-    def repl(match: re.Match) -> str:
-        return " ".join(list(match.group(0)))
-    return re.sub(r"\d+", repl, text)
+def _spell_callsign(cs: str) -> str:
+    """Spell letters/digits individually for TTS."""
+    cs = (cs or "").upper()
+    parts = []
+    for ch in cs:
+        if ch.isalnum():
+            parts.append(ch)
+        else:
+            parts.append(ch)
+    return " ".join(parts)
 
 
 def _tts_for_packet(src: str, addressee: str, msg: str, target: str) -> None:
     mode = APRS_TTS_MODE
     if mode == "off":
         return
-    src_spoken = _pronounce_digits(src)
+    src_spoken = _spell_callsign(src)
     target_base = target.split("-", 1)[0].upper()
     addressee_base = addressee.split("-", 1)[0].upper() if addressee else ""
     for_us = addressee_base == target_base
