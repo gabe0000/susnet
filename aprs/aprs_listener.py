@@ -134,7 +134,9 @@ def main() -> None:
     passcode = os.getenv("APRS_PASSCODE")
     target = os.getenv("APRS_TARGET", DEFAULT_TARGET)
     filter_str = os.getenv("APRS_FILTER") or f"p/{target},t/m"
-    watch_substr = os.getenv("APRS_WATCH", DEFAULT_WATCH)
+    watch_raw = os.getenv("APRS_WATCH", DEFAULT_WATCH)
+    watch_substr = watch_raw if watch_raw.upper() != "ALL" else ""
+    watch_any = watch_raw.upper() == "ALL"
 
     if not callsign or not passcode:
         _log("[ERROR] APRS_CALLSIGN/APRS_PASSCODE not set; export them or use /etc/default/meshtastic-aprs")
@@ -171,7 +173,7 @@ def main() -> None:
 
                 src, addressee, msg, path = parsed
                 target_match = addressee.upper() == target.upper()
-                watch_match = watch_substr and watch_substr.lower() in line.lower()
+                watch_match = watch_any or (watch_substr and watch_substr.lower() in line.lower())
                 if not (target_match or watch_match):
                     continue
 
