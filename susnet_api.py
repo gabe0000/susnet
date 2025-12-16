@@ -61,7 +61,7 @@ APRS_CALLSIGN = "W4VDX-10"
 APRS_ENV_FILE = Path("/etc/default/aprs-listener")
 APRS_DEFAULT_WATCH = "W4VDX"
 APRS_DEFAULT_ZIP = "28001"
-APRS_DEFAULT_RADIUS_MI = 100
+APRS_DEFAULT_RADIUS_MI = 200
 
 TARGET_NODE_RE = re.compile(r"\b(\d{3,7})\b")
 
@@ -733,8 +733,11 @@ def _ensure_aprs_geo(cfg: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _build_aprs_filter(cfg: Dict[str, Any]) -> str:
-    watch = (cfg.get("watch") or APRS_DEFAULT_WATCH).upper()
-    parts = [f"p/{watch}", "t/m"]
+    watch_raw = (cfg.get("watch") or APRS_DEFAULT_WATCH)
+    watch = (watch_raw or "").upper()
+    parts = ["t/m"]
+    if watch and watch != "ALL":
+        parts.insert(0, f"p/{watch}")
     if cfg.get("lat") is not None and cfg.get("lon") is not None:
         radius_km = round(float(cfg.get("radius_miles") or APRS_DEFAULT_RADIUS_MI) * 1.60934)
         parts.append(f"r/{cfg['lat']:.4f}/{cfg['lon']:.4f}/{radius_km}")
@@ -753,7 +756,7 @@ def _update_aprs_env(cfg: Dict[str, Any]) -> Dict[str, Any]:
         "APRS_PORT": env_defaults.get("APRS_PORT", "14580"),
         "APRS_TARGET": target,
         "APRS_FILTER": _build_aprs_filter(cfg),
-        "APRS_WATCH": (cfg.get("watch") or APRS_DEFAULT_WATCH).upper(),
+        "APRS_WATCH": (cfg.get("watch") or APRS_DEFAULT_WATCH),
         "APRS_ZIP": cfg.get("zip") or APRS_DEFAULT_ZIP,
         "APRS_RADIUS_MI": str(cfg.get("radius_miles") or APRS_DEFAULT_RADIUS_MI),
     }
