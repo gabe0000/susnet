@@ -108,6 +108,9 @@ def _tts_for_packet(src: str, addressee: str, msg: str, target: str) -> None:
     target_base = target.split("-", 1)[0].upper()
     addressee_base = addressee.split("-", 1)[0].upper() if addressee else ""
     for_us = addressee_base == target_base
+    # If watching ALL, avoid flooding: only announce packets for us unless mode is explicitly "all"
+    if not for_us and APRS_WATCH == "ALL" and mode != "all":
+        return
     if mode == "me" and not for_us:
         return
     is_beacon = not msg

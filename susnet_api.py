@@ -695,7 +695,7 @@ def _get_aprs_config() -> Dict[str, Any]:
         "zip": state.get("zip") or APRS_DEFAULT_ZIP,
         "radius_miles": float(state.get("radius_miles") or APRS_DEFAULT_RADIUS_MI),
         "target": state.get("target") or state.get("callsign") or "W4VDX-9",
-        "tts_mode": state.get("tts_mode") or "me",
+        "tts_mode": state.get("tts_mode") or os.getenv("APRS_TTS_MODE") or "me",
         "tts_node": state.get("tts_node") or os.getenv("APRS_TTS_NODE") or "66190",
     }
     geo = state.get("geo") or {}
@@ -1059,31 +1059,30 @@ def meshtastic_messages():
             except Exception:
                 return 0.0
         return 0.0
-    if items:
-        items.sort(key=_ts_key, reverse=True)
     lines = _tail_lines(MESHTASTIC_MESSAGES, 200)
-    if len(items) < 50 and lines:
-        # Merge in text log lines (newest first) if we have room
-        for ln in reversed(lines):
-            ts = None
-            body = ln.strip()
-            try:
-                ts_part = ln[:19]
-                ts = datetime.strptime(ts_part, "%Y-%m-%d %H:%M:%S").isoformat()
-                body = ln[20:].strip()
-            except Exception:
-                pass
-            items.append({
-                "timestamp": ts,
-                "from": None,
-                "from_name": "",
-                "to": None,
-                "to_name": "",
-                "text": body,
-                "channel": "",
-                "channelIndex": None,
-                "direct": False,
-            })
+    for ln in reversed(lines):
+        ts = None
+        body = ln.strip()
+        try:
+            ts_part = ln[:19]
+            ts = datetime.strptime(ts_part, "%Y-%m-%d %H:%M:%S").isoformat()
+            body = ln[20:].strip()
+        except Exception:
+            pass
+        items.append({
+            "timestamp": ts,
+            "from": None,
+            "from_name": "",
+            "to": None,
+            "to_name": "",
+            "text": body,
+            "channel": "",
+            "channelIndex": None,
+            "direct": False,
+        })
+    if items:
+        items = items[:200]
+        items.sort(key=_ts_key, reverse=True)
     return {"ok": True, "lines": lines[::-1], "items": items}
 
 
