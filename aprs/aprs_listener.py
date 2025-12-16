@@ -19,6 +19,7 @@ import os
 import socket
 import sys
 import time
+import re
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, Tuple
@@ -32,6 +33,8 @@ DEFAULT_PORT = 14580
 DEFAULT_TARGET = "W4VDX-9"
 DEFAULT_FILTER = None  # will be built from target if not provided
 DEFAULT_WATCH = "W4VDX"
+APRS_TTS_MODE = os.getenv("APRS_TTS_MODE", "me").lower()  # off|me|all
+APRS_TTS_NODE = os.getenv("APRS_TTS_NODE") or os.getenv("SUSNET_TTS_NODE") or "66190"
 APRS_TTS_ENABLED = str(os.getenv("APRS_TTS", "0")).lower() in ("1", "true", "yes", "on")
 APRS_TTS_NODE = os.getenv("APRS_TTS_NODE") or os.getenv("SUSNET_TTS_NODE") or "66190"
 
@@ -55,7 +58,7 @@ def _log(line: str) -> None:
 
 
 def _speak(text: str) -> None:
-    if not APRS_TTS_ENABLED or not text:
+    if APRS_TTS_MODE == "off" or not text:
         return
     try:
         cleaned = text.replace("APRS", "A.P.R.S.")
@@ -85,6 +88,35 @@ def _parse_aprs_message(line: str) -> Optional[Tuple[str, str, str, str]]:
     return src, addressee, msg, path
 
 
+def _pronounce_digits(text: str) -> str:
+    def repl(match: re.Match) -> str:
+        return " ".join(list(match.group(0)))
+    return re.sub(r"\d+", repl, text)
+
+
+def _tts_for_packet(src: str, addressee: str, msg: str, target: str) -> None:
+    mode = APRS_TTS_MODE
+    if mode == "off":
+        return
+    src_spoken = _pronounce_digits(src)
+    target_base = target.split("-", 1)[0].upper()
+    addressee_base = addressee.split("-", 1)[0].upper() if addressee else ""
+    for_us = addressee_base == target_base
+    if mode == "me" and not for_us:
+        return
+    is_beacon = not msg
+    if is_beacon:
+        _speak(f"APRS beacon from {src_spoken}. Open SusNet to learn more.")
+        return
+    short_threshold = 60
+    msg_len = len(msg)
+    length_tag = "short message" if msg_len <= short_threshold else "long message"
+    if for_us:
+        _speak(f"APRS message for us from {src_spoken}: {length_tag}. Open SusNet to learn more.")
+    else:
+        _speak(f"APRS message announced by {src_spoken}: {length_tag}. Open SusNet to learn more.")
+
+
 def _build_login_line(callsign: str, passcode: str, filter_str: str) -> str:
     return f"user {callsign} pass {passcode} vers aprs-listener 0.1 filter {filter_str}\n"
 
@@ -108,6 +140,7 @@ def main() -> None:
 
     while True:
         try:
+            logresp_logged = False
             _log(f"[INFO] Connecting to APRS-IS {server}:{port}")
             sock = socket.create_connection((server, port), timeout=30)
             f = sock.makefile("r", encoding="utf-8", errors="ignore")
@@ -121,8 +154,9 @@ def main() -> None:
                     continue
                 # APRS-IS may send status lines starting with '#'
                 if line.startswith("#"):
-                    if "logresp" in line.lower():
+                    if "logresp" in line.lower() and not logresp_logged:
                         _log(f"[INFO] APRS-IS {line}")
+                        logresp_logged = True
                     continue
 
                 parsed = _parse_aprs_message(line)
@@ -136,7 +170,7 @@ def main() -> None:
                     continue
 
                 _log(f"[APRS] {src} -> {addressee} | path={path}: {msg}")
-                _speak(f"APRS message from {src} to {addressee}: {msg}")
+                _tts_for_packet(src, addressee, msg, target)
 
         except Exception as e:
             _log(f"[WARN] Connection error: {e!r}, retrying in 10s")

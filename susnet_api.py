@@ -110,6 +110,8 @@ class AprsConfigRequest(BaseModel):
     watch: str = Field(..., min_length=2, max_length=12)
     target: Optional[str] = None
     callsign: Optional[str] = None
+    tts_mode: Optional[str] = Field(None, description="off|me|all")
+    tts_node: Optional[str] = None
 
 
 class CommandRequest(BaseModel):
@@ -693,6 +695,8 @@ def _get_aprs_config() -> Dict[str, Any]:
         "zip": state.get("zip") or APRS_DEFAULT_ZIP,
         "radius_miles": float(state.get("radius_miles") or APRS_DEFAULT_RADIUS_MI),
         "target": state.get("target") or state.get("callsign") or "W4VDX-9",
+        "tts_mode": state.get("tts_mode") or "me",
+        "tts_node": state.get("tts_node") or os.getenv("APRS_TTS_NODE") or "66190",
     }
     geo = state.get("geo") or {}
     if geo.get("zip") == cfg["zip"]:
@@ -714,6 +718,8 @@ def _save_aprs_config(cfg: Dict[str, Any]) -> Dict[str, Any]:
         "zip": cfg.get("zip") or APRS_DEFAULT_ZIP,
         "radius_miles": cfg.get("radius_miles") or APRS_DEFAULT_RADIUS_MI,
         "target": target_val,
+        "tts_mode": cfg.get("tts_mode") or aprs_state.get("tts_mode") or "me",
+        "tts_node": cfg.get("tts_node") or aprs_state.get("tts_node") or os.getenv("APRS_TTS_NODE") or "66190",
     })
     if cfg.get("lat") is not None and cfg.get("lon") is not None:
         aprs_state["geo"] = {"zip": aprs_state["zip"], "lat": cfg["lat"], "lon": cfg["lon"]}
@@ -759,6 +765,8 @@ def _update_aprs_env(cfg: Dict[str, Any]) -> Dict[str, Any]:
         "APRS_WATCH": (cfg.get("watch") or APRS_DEFAULT_WATCH),
         "APRS_ZIP": cfg.get("zip") or APRS_DEFAULT_ZIP,
         "APRS_RADIUS_MI": str(cfg.get("radius_miles") or APRS_DEFAULT_RADIUS_MI),
+        "APRS_TTS_MODE": cfg.get("tts_mode") or "me",
+        "APRS_TTS_NODE": cfg.get("tts_node") or os.getenv("APRS_TTS_NODE") or "66190",
     }
     lines = [f"{k}={v}" for k, v in env.items()]
     APRS_ENV_FILE.parent.mkdir(parents=True, exist_ok=True)
@@ -1054,6 +1062,28 @@ def meshtastic_messages():
     if items:
         items.sort(key=_ts_key, reverse=True)
     lines = _tail_lines(MESHTASTIC_MESSAGES, 200)
+    if len(items) < 50 and lines:
+        # Merge in text log lines (newest first) if we have room
+        for ln in reversed(lines):
+            ts = None
+            body = ln.strip()
+            try:
+                ts_part = ln[:19]
+                ts = datetime.strptime(ts_part, "%Y-%m-%d %H:%M:%S").isoformat()
+                body = ln[20:].strip()
+            except Exception:
+                pass
+            items.append({
+                "timestamp": ts,
+                "from": None,
+                "from_name": "",
+                "to": None,
+                "to_name": "",
+                "text": body,
+                "channel": "",
+                "channelIndex": None,
+                "direct": False,
+            })
     return {"ok": True, "lines": lines[::-1], "items": items}
 
 
@@ -1209,6 +1239,8 @@ def aprs_config_update(req: AprsConfigRequest):
         "watch": watch,
         "target": (req.target or "").strip() or None,
         "callsign": (req.callsign or "").strip() or None,
+        "tts_mode": (req.tts_mode or "").lower() or None,
+        "tts_node": (req.tts_node or "").strip() or None,
     }
     geo = _geocode_zip(zip_code)
     if not geo:
