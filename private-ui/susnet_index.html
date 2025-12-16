@@ -423,12 +423,15 @@
         const from = esc(e.from||'');
         const to = esc(e.to||'');
         const msg = esc(e.message||e.text||e.raw||'');
+        const path = esc(e.path||'');
+        const pathPill = path ? `<span class="pill aprs-path" data-path="${path}">Path</span>` : '';
         return `<div class="log-entry">
           ${ts? `<span class="ts">${ts}</span>`:''}
-          <div>${from? `<span class="pill">${from}${to? ` → ${to}`:''}</span>`:''}</div>
+          <div>${from? `<span class="pill">${from}${to? ` → ${to}`:''}</span>`:''}${pathPill}</div>
           <div>${msg}</div>
         </div>`;
       }).join('');
+      document.querySelectorAll('.aprs-path').forEach(el=>{ el.onclick=()=>{ const p=el.getAttribute('data-path')||''; alert(`APRS path:\\n${p}`); }; });
     }
     async function refreshAprs(){
       if(!guardActive()) return;

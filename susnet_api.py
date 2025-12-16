@@ -58,7 +58,7 @@ MODE_SWITCHER_URL = "http://127.0.0.1:3000"
 MODE_ALIAS_FILE = Path("/opt/dvswitch_mode_switcher/configs/tg_alias.yml")
 
 APRS_CALLSIGN = "W4VDX-10"
-APRS_ENV_FILE = Path("/etc/default/meshtastic-aprs")
+APRS_ENV_FILE = Path("/etc/default/aprs-listener")
 APRS_DEFAULT_WATCH = "W4VDX"
 APRS_DEFAULT_ZIP = "28001"
 APRS_DEFAULT_RADIUS_MI = 100
@@ -187,12 +187,14 @@ def _speak_tts(text: str, node: Optional[str] = None) -> None:
         name_map = _mesh_name_lookup()
         def _name_for(nid: str) -> str:
             if not nid:
-                return ""
+                return "unknown node"
             stripped = nid.lstrip("!")
-            return name_map.get(nid) or name_map.get(stripped) or nid
+            return name_map.get(nid) or name_map.get(stripped) or "unknown node"
         def _replace_ids(msg: str) -> str:
             return re.sub(r"!([0-9a-fA-F]{6,8})", lambda m: _name_for("!"+m.group(1)), msg)
         text = _replace_ids(text)
+        # spell out APRS so TTS says A.P.R.S.
+        text = re.sub(r"\bAPRS\b", "A.P.R.S.", text)
     except Exception:
         pass
     try:
@@ -795,14 +797,21 @@ def _parse_aprs_line(line: str) -> Dict[str, Any]:
         entry["timestamp"] = ts_match.group(1)
         body = ts_match.group(2)
         entry["text"] = body
-    # Attempt to extract from/to/message from common patterns
-    arrow_match = re.search(r"([A-Z0-9\-]+)[-]?>\s*([A-Z0-9\-]+)[: ]\s*(.*)", body)
-    if arrow_match:
-        entry["from"] = arrow_match.group(1)
-        entry["to"] = arrow_match.group(2)
-        entry["message"] = arrow_match.group(3)
+    # Attempt to extract from/to/path/message from "[APRS] SRC -> DST | path=...: msg"
+    arrow_with_path = re.search(r"([A-Z0-9\-]+)[-]?>\s*([A-Z0-9\-]+)\s*\|\s*path=([^:]+):\s*(.*)", body)
+    if arrow_with_path:
+        entry["from"] = arrow_with_path.group(1)
+        entry["to"] = arrow_with_path.group(2)
+        entry["path"] = arrow_with_path.group(3).strip()
+        entry["message"] = arrow_with_path.group(4).strip()
     else:
-        entry["message"] = body
+        arrow_match = re.search(r"([A-Z0-9\-]+)[-]?>\s*([A-Z0-9\-]+)[: ]\s*(.*)", body)
+        if arrow_match:
+            entry["from"] = arrow_match.group(1)
+            entry["to"] = arrow_match.group(2)
+            entry["message"] = arrow_match.group(3)
+        else:
+            entry["message"] = body
     return entry
 
 
@@ -1007,6 +1016,28 @@ def meshtastic_messages():
                 })
         except Exception:
             items = []
+    if not items:
+        # Fallback: parse plain text log lines to preserve history across restarts
+        lines = _tail_lines(MESHTASTIC_MESSAGES, 200)
+        for ln in lines:
+            ts = None
+            try:
+                ts_part = ln[:19]
+                ts = datetime.strptime(ts_part, "%Y-%m-%d %H:%M:%S").isoformat()
+                body = ln[20:].strip()
+            except Exception:
+                body = ln.strip()
+            items.append({
+                "timestamp": ts,
+                "from": None,
+                "from_name": "",
+                "to": None,
+                "to_name": "",
+                "text": body,
+                "channel": "",
+                "channelIndex": None,
+                "direct": False,
+            })
     def _ts_key(msg: Dict[str, Any]) -> float:
         ts_val = msg.get("timestamp") or msg.get("rxTime")
         if isinstance(ts_val, (int, float)):
@@ -1184,7 +1215,7 @@ def aprs_config_update(req: AprsConfigRequest):
     cfg_saved.update(geo)
     cfg_saved["filter"] = _build_aprs_filter(cfg_saved)
     _update_aprs_env(cfg_saved)
-    subprocess.run(["/bin/systemctl", "restart", "meshtastic-aprs.service"], check=False)
+    subprocess.run(["/bin/systemctl", "restart", "aprs-listener.service"], check=False)
     return {"ok": True, "config": cfg_saved}
 
 
@@ -1250,7 +1281,7 @@ def services():
         "asterisk",
         "susnet-api",
         "meshtastic-listener",
-        "meshtastic-aprs",
+        "aprs-listener",
         "dvswitch_mode_switcher",
         "MMDVM_Bridge",
         "Analog_Bridge",
