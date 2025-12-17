@@ -11,8 +11,8 @@
 - Ensure secrets are not committed to git (only env templates with comments).
 
 ## Service Exposure
-- Bind susnet-api to 127.0.0.1 and front with a proxy/auth (or firewall if LAN-only). Current: 0.0.0.0:8088.
-- Keep AMI on 127.0.0.1 (already set). Manager users should be least-privilege per role (UI vs monitor).
+- susnet-api: still on 0.0.0.0:8088; systemd hardened (NoNewPrivileges, ProtectSystem=full, ProtectHome=read-only, PrivateTmp, RestrictAddressFamilies). Next: bind to 127.0.0.1 + proxy/auth or firewall if LAN-only.
+- AMI on 127.0.0.1 (keep). Manager users should be least-privilege per role (UI vs monitor).
 - Restrict SSH: key-only auth, fail2ban, and limit to trusted subnets if possible.
 
 ## Systemd Hardening (susnet-api)
