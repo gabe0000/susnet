@@ -26,7 +26,7 @@
     .two{grid-template-columns:1fr;} @media(min-width:1080px){ .two{grid-template-columns:1fr 1fr;} }
     .three{grid-template-columns:1fr;} @media(min-width:1200px){ .three{grid-template-columns:repeat(3,1fr);} }
     .panel{background:linear-gradient(180deg, rgba(56,189,248,.05), rgba(255,97,230,.05)), var(--panel);
-      border:1px solid rgba(232,238,249,.08); border-radius:var(--radius); padding:16px 16px 18px; box-shadow:var(--glow); min-width:0}
+      border:1px solid rgba(232,238,249,.08); border-radius:var(--radius); padding:16px 16px 18px; box-shadow:var(--glow); min-width:0; position:relative}
     .panel h2{margin:0 0 8px; font-size:1.1rem; display:flex; align-items:center; gap:10px}
     .panel-head{display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:6px}
     .tag{font-size:.8rem; color:var(--muted)}
@@ -54,6 +54,10 @@
     .status{display:flex; align-items:center; gap:8px; font-variant-numeric:tabular-nums; color:var(--muted)}
     .dot{width:10px; height:10px; border-radius:999px; box-shadow:0 0 0 2px rgba(232,238,249,.06) inset}
     .dot.ok{background:var(--ok)} .dot.err{background:var(--err)} .dot.try{background:var(--warn)} .dot.paused{background:#9ca3af; box-shadow:0 0 0 2px rgba(232,238,249,.06) inset; opacity:.7}
+    .dot.tx{background:var(--err); box-shadow:0 0 0 2px rgba(251,113,133,.25),0 0 12px rgba(251,113,133,.6)}
+    .dot.rx{background:var(--ok); box-shadow:0 0 0 2px rgba(52,211,153,.25),0 0 12px rgba(52,211,153,.6)}
+    @keyframes breatheBlue { 0%{box-shadow:0 0 0 0 rgba(56,189,248,.55);} 50%{box-shadow:0 0 0 8px rgba(56,189,248,.12);} 100%{box-shadow:0 0 0 0 rgba(56,189,248,.05);} }
+    .dot.linked{background:var(--accent); animation:breatheBlue 2.8s ease-in-out infinite;}
     .pill{font-size:.75rem; padding:4px 8px; border-radius:999px; border:1px solid rgba(232,238,249,.14); color:var(--muted)}
     .log{background:var(--panel-2); border:1px solid rgba(232,238,249,.08); border-radius:var(--radius); padding:10px; font-family: ui-monospace, Menlo, Consolas, monospace; font-size:.9rem; max-height:240px; overflow:auto; min-width:0}
     .log-entry{padding:6px 8px; border-bottom:1px solid rgba(232,238,249,.08); border-radius:10px}
@@ -64,6 +68,9 @@
     .fav-bar{display:flex; flex-wrap:wrap; gap:8px; margin-top:8px}
     .fav{border:1px dashed rgba(232,238,249,.18); background:rgba(232,238,249,.04); color:var(--text); padding:8px 10px; border-radius:12px; cursor:pointer}
     .fav:hover{border-style:solid; border-color:rgba(56,189,248,.45)}
+    .node-meta{position:absolute; right:12px; bottom:10px; color:var(--muted); font-size:.8rem; text-align:right; line-height:1.2}
+    body.ticket-pick{cursor:crosshair}
+    body.ticket-pick [data-ticket-tag]{outline:1px dashed rgba(56,189,248,.4); border-radius:12px; box-shadow:0 0 0 4px rgba(56,189,248,.05); position:relative}
     .map{height:420px; border:1px solid rgba(232,238,249,.08); border-radius:var(--radius); overflow:hidden}
     .chips{display:flex; flex-wrap:wrap; gap:8px}
     .chip{border:1px solid rgba(232,238,249,.16); background:rgba(232,238,249,.05); color:var(--text); padding:6px 10px; border-radius:999px; cursor:pointer; font-size:.85rem}
@@ -96,85 +103,85 @@
       </div>
     </header>
 
-    <section class="panel">
+    <section class="panel" data-ticket-tag="AllStar" data-ticket-label="AllStar / GMRS Nodes" data-ticket-subsystem="AllStar">
       <div class="panel-head">
         <h2>AllStar / GMRS Nodes</h2>
         <div class="row">
-          <button class="btn btn-gray" id="refreshNodes">Refresh List</button>
+          <button class="btn btn-gray" id="refreshNodes" data-ticket-detail="AllStar refresh list">Refresh List</button>
           <span class="tag">Source: allmon3.ini</span>
-          <label class="tag" style="display:flex; align-items:center; gap:6px"><input type="checkbox" id="disconnectToggle" checked> Disconnect first</label>
+          <label class="tag" style="display:flex; align-items:center; gap:6px"><input type="checkbox" id="disconnectToggle" checked data-ticket-detail="AllStar disconnect-first toggle"> Disconnect first</label>
           <span class="tag">Tap = fill, long-press = connect</span>
         </div>
       </div>
-      <div id="nodeGrid" class="grid two"></div>
+      <div id="nodeGrid" class="grid two" data-ticket-detail="AllStar node cards"></div>
     </section>
 
-    <section class="panel">
+    <section class="panel" data-ticket-tag="DVSwitch" data-ticket-label="DVSwitch Mode Switcher" data-ticket-subsystem="DVSwitch">
       <div class="panel-head">
         <h2>DVSwitch Mode Switcher</h2>
         <div class="row">
-          <button class="btn btn-amb" id="refreshModes">Refresh Modes</button>
-          <div class="status"><span class="dot try" id="modeDot"></span><span id="modeText">Unknown</span></div>
+          <button class="btn btn-amb" id="refreshModes" data-ticket-detail="DVSwitch refresh modes">Refresh Modes</button>
+          <div class="status"><span class="dot try" id="modeDot" data-ticket-detail="DVSwitch status dot"></span><span id="modeText" data-ticket-detail="DVSwitch status text">Unknown</span></div>
         </div>
       </div>
       <div class="row">
-        <div class="field"><label>Mode</label><select id="modeSelect"></select></div>
-        <div class="field" style="flex:1 1 auto"><label>Talkgroup</label><select id="tgSelect" style="all:unset; color:var(--text); width:100%"></select></div>
-        <button class="btn btn-cyan" id="setMode">Set</button>
-        <button class="btn btn-mag" id="addModeFav">Add Favorite</button>
+        <div class="field"><label>Mode</label><select id="modeSelect" data-ticket-detail="DVSwitch mode select"></select></div>
+        <div class="field" style="flex:1 1 auto"><label>Talkgroup</label><select id="tgSelect" data-ticket-detail="DVSwitch talkgroup select" style="all:unset; color:var(--text); width:100%"></select></div>
+        <button class="btn btn-cyan" id="setMode" data-ticket-detail="DVSwitch set mode">Set</button>
+        <button class="btn btn-mag" id="addModeFav" data-ticket-detail="DVSwitch add favorite">Add Favorite</button>
       </div>
-      <div class="fav-bar" id="modeFavs"></div>
-      <div class="log" id="modeLog" style="margin-top:10px"></div>
+      <div class="fav-bar" id="modeFavs" data-ticket-detail="DVSwitch favorites"></div>
+      <div class="log" id="modeLog" data-ticket-detail="DVSwitch log" style="margin-top:10px"></div>
     </section>
 
     <div class="grid two" style="margin-top:18px">
-      <section class="panel">
+      <section class="panel" data-ticket-tag="APRS" data-ticket-label="APRS Panel" data-ticket-subsystem="APRS">
         <div class="panel-head"><h2>APRS</h2><span class="tag" id="aprsTag">Callsign: —</span></div>
         <div class="row">
-          <div class="field" style="flex:1 1 auto"><label>Filter</label><input id="aprsFilter" placeholder="Search text" /></div>
-          <button class="btn btn-gray" id="aprsRefresh">Refresh</button>
+          <div class="field" style="flex:1 1 auto"><label>Filter</label><input id="aprsFilter" placeholder="Search text" data-ticket-detail="APRS filter" /></div>
+          <button class="btn btn-gray" id="aprsRefresh" data-ticket-detail="APRS refresh">Refresh</button>
         </div>
         <div class="row" style="margin-top:8px">
-          <div class="field" style="flex:1 1 120px"><label>Watch</label><input id="aprsWatch" placeholder="W4VDX or ALL" /></div>
-          <div class="field" style="flex:1 1 120px"><label>ZIP</label><input id="aprsZip" placeholder="28001" inputmode="numeric" /></div>
-          <div class="field" style="flex:1 1 120px"><label>Radius (mi)</label><input id="aprsRadius" placeholder="200" inputmode="numeric" /></div>
-          <div class="field" style="flex:1 1 140px"><label>TTS</label><select id="aprsTtsMode"><option value="off">Off</option><option value="me">Me only</option><option value="all">All</option></select></div>
-          <button class="btn btn-mag" id="aprsSaveCfg">Save</button>
+          <div class="field" style="flex:1 1 120px"><label>Watch</label><input id="aprsWatch" placeholder="W4VDX or ALL" data-ticket-detail="APRS watch" /></div>
+          <div class="field" style="flex:1 1 120px"><label>ZIP</label><input id="aprsZip" placeholder="28001" inputmode="numeric" data-ticket-detail="APRS ZIP" /></div>
+          <div class="field" style="flex:1 1 120px"><label>Radius (mi)</label><input id="aprsRadius" placeholder="200" inputmode="numeric" data-ticket-detail="APRS radius" /></div>
+          <div class="field" style="flex:1 1 140px"><label>TTS</label><select id="aprsTtsMode" data-ticket-detail="APRS TTS mode"><option value="off">Off</option><option value="me">Me only</option><option value="all">All</option></select></div>
+          <button class="btn btn-mag" id="aprsSaveCfg" data-ticket-detail="APRS save config">Save</button>
           <span class="tag" id="aprsFilterTag">Filter: —</span>
         </div>
         <div class="row" style="margin-top:8px">
-          <div class="field" style="flex:2 1 auto"><label>Send to</label><input id="aprsTo" placeholder="CALL or CALL-SSID" /></div>
-          <div class="field" style="flex:3 1 auto"><label>Message</label><input id="aprsMsg" placeholder="Text" /></div>
-          <button class="btn btn-cyan" id="aprsSend">Send</button>
+          <div class="field" style="flex:2 1 auto"><label>Send to</label><input id="aprsTo" placeholder="CALL or CALL-SSID" data-ticket-detail="APRS destination" /></div>
+          <div class="field" style="flex:3 1 auto"><label>Message</label><input id="aprsMsg" placeholder="Text" data-ticket-detail="APRS message" /></div>
+          <button class="btn btn-cyan" id="aprsSend" data-ticket-detail="APRS send">Send</button>
         </div>
         <div class="split"></div>
-        <div class="log" id="aprsLog"></div>
+        <div class="log" id="aprsLog" data-ticket-detail="APRS log"></div>
       </section>
 
-      <section class="panel">
+      <section class="panel" data-ticket-tag="Meshtastic" data-ticket-label="Meshtastic Panel" data-ticket-subsystem="Meshtastic">
         <div class="panel-head">
           <h2>Meshtastic</h2><span class="tag" id="meshStatusTag">Messages: —</span>
           <div class="row">
-            <button class="btn btn-amb" id="meshRefresh">Refresh</button>
-            <button class="btn btn-gray" id="meshAttach">Connect</button>
-            <button class="btn btn-rose" id="meshDetach">Disconnect</button>
+            <button class="btn btn-amb" id="meshRefresh" data-ticket-detail="Meshtastic refresh">Refresh</button>
+            <button class="btn btn-gray" id="meshAttach" data-ticket-detail="Meshtastic connect">Connect</button>
+            <button class="btn btn-rose" id="meshDetach" data-ticket-detail="Meshtastic disconnect">Disconnect</button>
           </div>
         </div>
 
         <div class="row" style="flex-wrap:wrap; gap:10px">
-          <div class="chips" id="meshChannelChips" style="flex:1 1 auto"></div>
-          <div class="field" style="flex:1 1 220px"><label>Search</label><input id="meshSearch" placeholder="text or callsign" /></div>
+          <div class="chips" id="meshChannelChips" data-ticket-detail="Meshtastic channel filter chips" style="flex:1 1 auto"></div>
+          <div class="field" style="flex:1 1 220px"><label>Search</label><input id="meshSearch" placeholder="text or callsign" data-ticket-detail="Meshtastic search" /></div>
         </div>
-        <div class="chips" id="meshFilterChips" style="margin-top:8px">
-          <div class="chip" data-mesh-filter="dm">DM only</div>
-          <div class="chip" data-mesh-filter="mqtt">MQTT only</div>
-          <div class="chip" data-mesh-filter="rf">RF only</div>
-          <div class="chip active" data-mesh-filter="ncmesh">Hide NC Mesh</div>
+        <div class="chips" id="meshFilterChips" data-ticket-detail="Meshtastic message filter chips" style="margin-top:8px">
+          <div class="chip" data-mesh-filter="dm" data-ticket-detail="Meshtastic filter DM">DM only</div>
+          <div class="chip" data-mesh-filter="mqtt" data-ticket-detail="Meshtastic filter MQTT">MQTT only</div>
+          <div class="chip" data-mesh-filter="rf" data-ticket-detail="Meshtastic filter RF">RF only</div>
+          <div class="chip active" data-mesh-filter="ncmesh" data-ticket-detail="Meshtastic filter NC mesh">Hide NC Mesh</div>
         </div>
       <div class="row" style="margin-top:10px">
-        <div class="field" style="flex:2 1 auto"><label>Destination (optional)</label><select id="meshTo" style="width:100%"></select></div>
-        <div class="field" style="flex:1 1 160px"><label>Channel</label><select id="meshSendChannel" style="width:100%"></select></div>
-        <div class="field" style="flex:3 1 auto"><label>Message</label><textarea id="meshMsg" placeholder="Text" rows="3" style="width:100%; min-height:72px"></textarea></div>
+        <div class="field" style="flex:2 1 auto"><label>Destination (optional)</label><select id="meshTo" data-ticket-detail="Meshtastic destination dropdown" style="width:100%"></select></div>
+        <div class="field" style="flex:1 1 160px"><label>Channel</label><select id="meshSendChannel" data-ticket-detail="Meshtastic channel dropdown" style="width:100%"></select></div>
+        <div class="field" style="flex:3 1 auto"><label>Message</label><textarea id="meshMsg" data-ticket-detail="Meshtastic message input" placeholder="Text" rows="3" style="width:100%; min-height:72px"></textarea></div>
         <button class="btn btn-cyan" id="meshSend">Send</button>
       </div>
         <div class="row" style="gap:10px; margin-top:6px">
@@ -183,30 +190,30 @@
         </div>
         <div class="split"></div>
         <div class="tag">Messages</div>
-        <div class="log" id="meshMessages" style="min-height:320px; max-height:520px; overflow-y:auto"></div>
+        <div class="log" id="meshMessages" data-ticket-detail="Meshtastic message log" style="min-height:320px; max-height:520px; overflow-y:auto"></div>
         <div class="split"></div>
       <div class="tag">Telemetry</div>
-      <div class="log" id="meshTelemetry"></div>
+      <div class="log" id="meshTelemetry" data-ticket-detail="Meshtastic telemetry log"></div>
       <div class="split"></div>
       <div class="tag">Favorites & Profiles</div>
-      <div id="meshProfiles" class="grid two"></div>
+      <div id="meshProfiles" class="grid two" data-ticket-detail="Meshtastic favorites and profiles"></div>
       </section>
     </div>
 
-    <section class="panel" style="margin-top:18px">
+    <section class="panel" style="margin-top:18px" data-ticket-tag="Map" data-ticket-label="Activity Map" data-ticket-subsystem="UI">
       <div class="panel-head"><h2>Map</h2><div class="row"><button class="btn btn-gray" id="mapRefresh">Refresh</button><span class="tag">Pins: favorites, APRS, Meshtastic</span></div></div>
-      <div id="map" class="map" aria-label="Activity map"></div>
+      <div id="map" class="map" aria-label="Activity map" data-ticket-detail="Map view"></div>
     </section>
 
-    <section class="panel" style="margin-top:18px">
+    <section class="panel" style="margin-top:18px" data-ticket-tag="TTS" data-ticket-label="Send TTS" data-ticket-subsystem="AllStar">
       <div class="panel-head">
         <h2>Send TTS</h2>
         <span class="tag">Default node 66190</span>
       </div>
       <div class="row" style="flex-direction:column; gap:10px">
-        <div class="field" style="width:100%"><label style="width:110px">Text</label><textarea id="ttsText" rows="3" placeholder="What should be spoken?" style="width:100%"></textarea></div>
-        <div class="field" style="width:100%"><label style="width:110px">Node (optional)</label><input id="ttsNode" inputmode="numeric" placeholder="66190" style="width:100%" /></div>
-        <div class="row" style="gap:10px"><button class="btn btn-cyan" id="ttsSendBtn">Send TTS</button><span class="tag">Speaks via AllStar</span></div>
+        <div class="field" style="width:100%"><label style="width:110px">Text</label><textarea id="ttsText" rows="3" placeholder="What should be spoken?" style="width:100%" data-ticket-detail="TTS text"></textarea></div>
+        <div class="field" style="width:100%"><label style="width:110px">Node (optional)</label><input id="ttsNode" inputmode="numeric" placeholder="66190" style="width:100%" data-ticket-detail="TTS node" /></div>
+        <div class="row" style="gap:10px"><button class="btn btn-cyan" id="ttsSendBtn" data-ticket-detail="TTS send">Send TTS</button><span class="tag">Speaks via AllStar</span></div>
       </div>
     </section>
 
@@ -214,8 +221,9 @@
       <div class="panel-head">
         <h2>Support / Troubleshooting</h2>
         <div class="row">
-          <button class="btn btn-cyan" id="ticketNewBtn">Create Support Ticket</button>
-          <button class="btn btn-gray" id="ticketRefreshBtn">View Open Tickets</button>
+          <button class="btn btn-cyan" id="ticketNewBtn" data-ticket-detail="Ticket create">Create Support Ticket</button>
+          <button class="btn btn-amb" id="ticketTagBtn" data-ticket-detail="Ticket tag">Tag & Create</button>
+          <button class="btn btn-gray" id="ticketRefreshBtn" data-ticket-detail="Ticket refresh">View Open Tickets</button>
         </div>
       </div>
       <div class="log" id="ticketList"><span class="tag">Click "View Open Tickets" to load</span></div>
@@ -314,7 +322,9 @@
     const DEFAULT_CENTER = { lat: 35.0, lon: -79.0 };
     let lowPower = false;
     const inFlight = new Set();
-    const state = { nodes: [], favs: { nodes: {}, modes: {}, modeCurrentKey: '' }, modes: [], map: null, mapLayer: null, aprs: { config: null, entries: [] }, mesh: { topo: [], channels: [], channelDetails: [], favs: [], profiles: {}, channelPrefs: {}, filters: { fav:false, mqtt:false, rf:false, stale:false, channel:'', dm:false, search:'', hideNcmesh:true }, messages: [], telemetry: [], profileEditingId: null }, tickets: { open: [], loaded: false } };
+    const state = { nodes: [], favs: { nodes: {}, modes: {}, modeCurrentKey: '' }, modes: [], map: null, mapLayer: null, aprs: { config: null, entries: [] }, mesh: { topo: [], channels: [], channelDetails: [], favs: [], profiles: {}, channelPrefs: {}, filters: { fav:false, mqtt:false, rf:false, stale:false, channel:'', dm:false, search:'', hideNcmesh:true }, messages: [], telemetry: [], profileEditingId: null }, tickets: { open: [], loaded: false, tagNote: '' } };
+    const nodePulseTimers = {};
+    let amiSource = null;
     const ts = () => new Date().toLocaleTimeString();
     const esc = (s='') => String(s).replace(/[&<>]/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;' }[c]));
 
@@ -346,24 +356,49 @@
     async function fetchNodes(){ const {nodes=[]}=await api('/api/nodes','GET'); state.nodes=nodes; renderNodes(); nodes.forEach(n=>loadNodeFavs(n.id)); nodes.forEach(n=>refreshStatus(n.id)); }
 
     function renderNodes(){ const grid=$('#nodeGrid'); grid.innerHTML=''; if(!state.nodes.length){ grid.innerHTML='<span class="tag">No nodes found in allmon3.ini</span>'; return; } const pin = [66190,531121]; const ordered=[...state.nodes].sort((a,b)=>{ const ai=pin.indexOf(Number(a.id)); const bi=pin.indexOf(Number(b.id)); if(ai!==-1 || bi!==-1){ if(ai===-1) return 1; if(bi===-1) return -1; return ai-bi; } return (a.id||'').toString().localeCompare((b.id||'').toString()); }); ordered.forEach(n=>{ const card=document.createElement('div'); card.className='panel'; card.innerHTML=`
-        <div class="panel-head"><div class="row" style="gap:8px"><h3 style="margin:0">Node ${n.id}</h3><span class="pill">${n.host}</span></div>
+        <div class="panel-head"><div class="row" style="gap:8px"><h3 style="margin:0">Node ${n.id}</h3><span class="pill" data-ticket-detail="AllStar node host">${n.host}</span></div>
           <div class="status"><span class="dot try" id="dot-${n.id}"></span><span id="status-${n.id}">Checking…</span></div>
         </div>
-        <div class="row"><div class="field" style="flex:1 1 auto"><label>Target</label><input id="target-${n.id}" inputmode="numeric" placeholder="Node number" /></div>
-          <button class="btn btn-cyan" data-node="${n.id}" data-action="connect">Connect (perm)</button>
-          <button class="btn btn-rose" data-node="${n.id}" data-action="disc">Disconnect All</button>
+        <div class="row"><div class="field" style="flex:1 1 auto"><label>Target</label><input id="target-${n.id}" inputmode="numeric" placeholder="Node number" data-ticket-detail="AllStar target for ${n.id}" /></div>
+          <button class="btn btn-cyan" data-node="${n.id}" data-action="connect" data-ticket-detail="AllStar connect ${n.id}">Connect (perm)</button>
+          <button class="btn btn-rose" data-node="${n.id}" data-action="disc" data-ticket-detail="AllStar disconnect ${n.id}">Disconnect All</button>
         </div>
-        <div class="row"><button class="btn btn-mag" data-node="${n.id}" data-action="fav">Add Favorite</button><button class="btn btn-amb" data-node="${n.id}" data-action="refresh">Status</button></div>
-        <div class="fav-bar" id="favs-${n.id}"></div>
+        <div class="row"><button class="btn btn-mag" data-node="${n.id}" data-action="fav" data-ticket-detail="AllStar favorite ${n.id}">Add Favorite</button><button class="btn btn-amb" data-node="${n.id}" data-action="status" data-ticket-detail="AllStar status ${n.id}">Status</button></div>
+        <div class="fav-bar" id="favs-${n.id}" data-ticket-detail="AllStar favorites ${n.id}"></div>
+        <div class="node-meta" id="meta-${n.id}" data-ticket-detail="AllStar link telemetry ${n.id}"></div>
       `; grid.appendChild(card); }); bindNodeButtons(); }
 
     function bindNodeButtons(){ document.querySelectorAll('[data-action]')
       .forEach(btn=>btn.onclick=async (e)=>{ const node=Number(e.target.getAttribute('data-node')); const action=e.target.getAttribute('data-action');
-        if(action==='connect') return connectNode(node); if(action==='disc') return disconnectNode(node); if(action==='fav') return addNodeFavorite(node); if(action==='refresh') return refreshStatus(node);
+        if(action==='connect') return connectNode(node); if(action==='disc') return disconnectNode(node); if(action==='fav') return addNodeFavorite(node); if(action==='status') return playStatus(node);
       }); }
 
-    async function refreshStatus(node){ if(lowPower){ setNodeStatus(node,'paused','Paused'); return; } try{ const {connected=[]}=await api('/api/status','POST',{localNode:node}); const text = connected.length ? `Linked: ${connected.join(', ')}` : 'No links'; setNodeStatus(node, connected.length?'ok':'err', text); log(`Node ${node}: ${text}`);} catch(e){ setNodeStatus(node,'err','Error'); log(`<b style="color:#ff9abf">Status ${node} failed</b> ${e.message}`);} }
-    function setNodeStatus(node, stateTxt, text){ const dot=$(`#dot-${node}`); const label=$(`#status-${node}`); if(dot){ dot.classList.remove('ok','err','try','paused'); dot.classList.add(stateTxt); } if(label) label.textContent=text; }
+    function formatAgo(ts){ if(!ts) return '—'; const diff = Math.max(0, Date.now()/1000 - ts); if(diff < 60) return `${Math.round(diff)}s ago`; if(diff < 3600) return `${Math.round(diff/60)}m ago`; return `${(diff/3600).toFixed(1)}h ago`; }
+    async function refreshStatus(node){
+      if(lowPower){ setNodeStatus(node,'paused','Paused'); return; }
+      try{
+        const resp=await api('/api/status','POST',{localNode:node});
+        const connected=resp.connected||[];
+        const meta=resp.meta||{};
+        const text = connected.length ? `Linked: ${connected.join(', ')}` : 'No links';
+        const state = connected.length ? 'linked' : 'err';
+        setNodeStatus(node, state, text);
+        const metaBox = $(`#meta-${node}`);
+        if(metaBox){
+          const since = meta.link_since ? `since ${formatAgo(meta.link_since)}` : '—';
+          const lastTx = meta.last_tx ? `TX ${formatAgo(meta.last_tx)}` : '';
+          const lastRx = meta.last_rx ? `RX ${formatAgo(meta.last_rx)}` : '';
+          const linksRaw = meta.links_raw ? `Raw: ${meta.links_raw}` : '';
+          metaBox.innerHTML = `${connected.length? 'Links: '+connected.join(', ') : 'Links: none'}<br>${since}${lastTx? ' · '+lastTx:''}${lastRx? ' · '+lastRx:''}${linksRaw? '<br>'+linksRaw:''}`;
+        }
+        log(`Node ${node}: ${text}`);
+      } catch(e){
+        setNodeStatus(node,'err','Error');
+        log(`<b style="color:#ff9abf">Status ${node} failed</b> ${e.message}`);
+      }
+    }
+    function setNodeStatus(node, stateTxt, text){ const dot=$(`#dot-${node}`); const label=$(`#status-${node}`); if(dot){ dot.classList.remove('ok','err','try','paused','tx','rx','linked'); dot.classList.add(stateTxt); } if(label) label.textContent=text; }
+    async function playStatus(node){ if(!guardActive()) return; setNodeStatus(node,'try','Announcing status…'); try{ await api('/api/status-tone','POST',{localNode:node}); log(`<b>Status tone</b> sent for ${node}`); } catch(e){ log(`<b style="color:#ff9abf">Status tone failed</b> ${e.message}`); } await refreshStatus(node); }
 
     async function disconnectNode(node){ if(!guardActive()) return; setNodeStatus(node,'try','Disconnecting…'); try{ await api('/api/disconnect-all','POST',{localNode:node}); log(`<b>Disconnect all</b> on ${node}`);} catch(e){ log(`<b style="color:#ff9abf">Disconnect failed</b> ${e.message}`);} await refreshStatus(node); }
 
@@ -394,7 +429,32 @@
       btn.ontouchstart=(e)=>{ trigger(); };
       btn.ontouchend=btn.ontouchcancel=clear;
     }
-    function renderNodeFavs(node){ const bar=$(`#favs-${node}`); if(!bar) return; const favs=state.favs.nodes[node]||[]; bar.innerHTML=''; if(!favs.length){ bar.innerHTML='<span class="tag">No favorites yet</span>'; return; } favs.forEach(f=>{ const b=document.createElement('button'); b.className='fav'; b.textContent=f.label||f.id; bindFavButton(b, node, f.id); bar.appendChild(b); }); }
+    function renderNodeFavs(node){ const bar=$(`#favs-${node}`); if(!bar) return; const favs=state.favs.nodes[node]||[]; bar.innerHTML=''; if(!favs.length){ bar.innerHTML='<span class="tag">No favorites yet</span>'; return; } favs.forEach(f=>{ const b=document.createElement('button'); b.className='fav'; b.setAttribute('data-ticket-detail', `AllStar favorite ${node} → ${f.id}`); b.textContent=f.label||f.id; bindFavButton(b, node, f.id); bar.appendChild(b); }); }
+
+    function bumpNodeIndicator(node,state,text){
+      const dot=$(`#dot-${node}`); const label=$(`#status-${node}`);
+      if(dot){ dot.classList.remove('ok','err','try','paused','tx','rx','linked'); dot.classList.add(state); }
+      if(label && text) label.textContent = text;
+      if(nodePulseTimers[node]) clearTimeout(nodePulseTimers[node]);
+      if(state==='tx' || state==='rx'){ nodePulseTimers[node] = setTimeout(()=>refreshStatus(node), 6000); }
+    }
+
+    function handleAmiEvent(evt){
+      if(!evt || !evt.node) return;
+      if(evt.state==='tx'){ bumpNodeIndicator(evt.node,'tx','Transmitting'); log(`TX: ${evt.node}`); }
+      else if(evt.state==='rx'){ bumpNodeIndicator(evt.node,'rx','Receiving'); log(`RX: ${evt.node}`); }
+      else if(evt.state==='links'){ bumpNodeIndicator(evt.node,'ok', evt.links ? `Links: ${evt.links}` : 'Links updated'); }
+    }
+
+    function startAmiStream(){
+      if(!('EventSource' in window)){ log('SSE not supported in this browser'); return; }
+      try{
+        if(amiSource) amiSource.close();
+        amiSource = new EventSource('/api/events/ami');
+        amiSource.onmessage = (e)=>{ try{ const evt=JSON.parse(e.data); handleAmiEvent(evt); } catch(err){ console.warn('AMI evt parse', err); } };
+        amiSource.onerror = ()=>{ setTimeout(startAmiStream, 2000); };
+      }catch(e){ log(`<b style="color:#ff9abf">AMI stream failed</b> ${e.message||e}`); }
+    }
 
     // DVSwitch
     async function fetchModes(){ const {modes=[]}=await api('/api/mode/modes'); state.modes=modes; renderModeSelect(); const initialMode = $('#modeSelect')?.value || (modes[0]?.name || ''); await loadModeFavs(initialMode); const {mode,tgid}=await api('/api/mode/status'); updateModeStatus(mode,tgid); }
@@ -497,63 +557,49 @@
       const n = topo.find(n=>n.id===id || (alt && n.id===alt));
       return (n && n.name) ? n.name : (trimmedFrom || id || 'unknown');
     }
+    
     function channelLabel(channel, idx){
       const details = state.mesh.channelDetails||[];
+      const byIndex = {};
+      details.forEach(d=>{ if(d && d.index!==undefined) byIndex[Number(d.index)] = d.name || d.label; });
+      const norm = (v)=> (v||'').toString().trim().toLowerCase();
+      const chNorm = norm(channel);
+      const primaryIdx = 0;
+      const secondaryIdx = 1;
+      // direct index hit
       if(idx!==undefined && idx!==null){
-        const hit = details.find(d=>String(d.index)===String(idx));
-        if(hit && hit.name) return hit.name;
+        const hit = byIndex[Number(idx)];
+        if(hit) return hit;
       }
-      if(typeof channel==='number' || (!isNaN(Number(channel)) && channel!=='')){
-        const num = Number(channel);
-        const hit = details.find(d=>String(d.index)===String(num));
-        if(hit && hit.name) return hit.name;
-        const names = state.mesh.channels||[];
-        if(num>=0 && num<names.length && names[num]) return names[num];
+      // numeric channel value
+      if(channel!==undefined && channel!==null){
+        const maybeNum = Number(channel);
+        if(!Number.isNaN(maybeNum)){
+          if(byIndex[maybeNum]) return byIndex[maybeNum];
+          const names = state.mesh.channels||[];
+          if(maybeNum>=0 && maybeNum<names.length && names[maybeNum]) return names[maybeNum];
+        }
       }
-      const byName = details.find(d=>d.name===channel);
-      if(byName) return byName.name;
+      // map generic labels to known indexes
+      if(details.length){
+        if(chNorm.includes('primary')){ if(byIndex[primaryIdx]) return byIndex[primaryIdx]; }
+        if(chNorm.includes('secondary') || chNorm.includes('second')){ if(byIndex[secondaryIdx]) return byIndex[secondaryIdx]; }
+      }
+      // exact name match
+      const byName = details.find(d=>d && (d.name===channel || d.label===channel));
+      if(byName && byName.name) return byName.name;
       const names = state.mesh.channels||[];
-      if(channel && !isNaN(Number(channel)) && names.length){
+      if(channel && !Number.isNaN(Number(channel)) && names.length){
         const num = Number(channel);
         if(num>=0 && num<names.length && names[num]) return names[num];
       }
+      // fallback to provided channel string or generic primary
+      if(chNorm && chNorm!=='primary' && chNorm!=='secondary') return channel;
+      if(byIndex[primaryIdx]) return byIndex[primaryIdx];
       return channel || 'Primary';
     }
-    function loadChannelPrefs(){ try{ const raw=localStorage.getItem(MESH_CHANNEL_PREF_KEY); state.mesh.channelPrefs = raw ? JSON.parse(raw) : {}; } catch(e){ state.mesh.channelPrefs = {}; } }
-    function saveChannelPrefs(){ try{ localStorage.setItem(MESH_CHANNEL_PREF_KEY, JSON.stringify(state.mesh.channelPrefs||{})); } catch(e){} }
 
-    function buildChannelPrefsModal(ch, prefs, onSave){
-      const overlay=document.createElement('div'); overlay.className='modal show'; overlay.style.display='flex'; overlay.style.alignItems='center'; overlay.style.justifyContent='center';
-      const box=document.createElement('div'); box.className='box'; box.style.minWidth='260px';
-      box.innerHTML=`<h3 style="margin-top:0">Channel ${esc(ch)} Preferences</h3>
-        <div class="row" style="flex-direction:column; gap:8px; align-items:flex-start">
-          <label><input type="checkbox" id="pref-muteMsg"> Mute messages</label>
-          <label><input type="checkbox" id="pref-muteTts"> Mute TTS</label>
-          <label><input type="checkbox" id="pref-soloMsg"> Solo messages</label>
-          <label><input type="checkbox" id="pref-soloTts"> Solo TTS</label>
-        </div>
-        <div class="row" style="margin-top:12px; gap:8px">
-          <button class="btn btn-cyan" id="prefSave">Save</button>
-          <button class="btn btn-gray" id="prefCancel">Cancel</button>
-        </div>`;
-      overlay.appendChild(box);
-      document.body.appendChild(overlay);
-      document.body.classList.add('modal-open');
-      ['muteMsg','muteTts','soloMsg','soloTts'].forEach(k=>{ const cb=box.querySelector(`#pref-${k}`); if(cb) cb.checked=!!prefs[k]; });
-      box.querySelector('#prefSave').onclick=()=>{ const next={muteMsg:box.querySelector('#pref-muteMsg').checked, muteTts:box.querySelector('#pref-muteTts').checked, soloMsg:box.querySelector('#pref-soloMsg').checked, soloTts:box.querySelector('#pref-soloTts').checked}; onSave(next); document.body.classList.remove('modal-open'); overlay.remove(); };
-      box.querySelector('#prefCancel').onclick=()=>{ document.body.classList.remove('modal-open'); overlay.remove(); };
-    }
-
-    async function openChannelPrefs(ch){
-      const prefs = state.mesh.channelPrefs[ch] || {muteMsg:false,muteTts:false,soloMsg:false,soloTts:false};
-      buildChannelPrefsModal(ch, prefs, async (next)=>{
-        state.mesh.channelPrefs[ch]=next;
-        await persistMeshPrefs({channels:{[ch]:next}});
-        renderMeshChannels(); renderMeshLogs();
-      });
-    }
-
-    function filterMeshMessages(msgs){ const f=state.mesh.filters; const prefs=state.mesh.channelPrefs||{}; const activeSoloMsg = Object.values(prefs).some(p=>p.soloMsg); const activeSoloTts = Object.values(prefs).some(p=>p.soloTts); const search = (f.search||'').toLowerCase(); return (msgs||[]).filter(m=>{ const channel = (m.channel||'').toLowerCase(); const cp = prefs[m.channel||''] || {muteMsg:false,muteTts:false,soloMsg:false,soloTts:false}; if(f.channel && channel !== f.channel.toLowerCase()) return false; if(f.hideNcmesh && /nc\s?mesh/i.test(channel)) return false; const viaMqtt = !!(m.via_mqtt || m.via === 'mqtt'); if(f.mqtt && !viaMqtt) return false; if(f.rf && viaMqtt) return false; if(f.dm){ const toId = (m.to||'') || ''; if(!toId || toId === '^all' || toId === '^local') return false; } if(cp.muteMsg) return false; if(activeSoloMsg && !cp.soloMsg) return false; if(activeSoloTts && !cp.soloTts && !cp.soloMsg) { /* skip messages for TTS-only solo? UI view still shows unless soloMsg*/ } if(search){ const hay = `${m.text||''} ${m.from||''} ${m.from_name||''} ${nicknameForNode(m.from||'', m.from_name||'')}`.toLowerCase(); if(!hay.includes(search)) return false; } return true; }); }
+function filterMeshMessages(msgs){ const f=state.mesh.filters; const prefs=state.mesh.channelPrefs||{}; const activeSoloMsg = Object.values(prefs).some(p=>p.soloMsg); const activeSoloTts = Object.values(prefs).some(p=>p.soloTts); const search = (f.search||'').toLowerCase(); return (msgs||[]).filter(m=>{ const channel = (m.channel||'').toLowerCase(); const cp = prefs[m.channel||''] || {muteMsg:false,muteTts:false,soloMsg:false,soloTts:false}; if(f.channel && channel !== f.channel.toLowerCase()) return false; if(f.hideNcmesh && /nc\s?mesh/i.test(channel)) return false; const viaMqtt = !!(m.via_mqtt || m.via === 'mqtt'); if(f.mqtt && !viaMqtt) return false; if(f.rf && viaMqtt) return false; if(f.dm){ const toId = (m.to||'') || ''; if(!toId || toId === '^all' || toId === '^local') return false; } if(cp.muteMsg) return false; if(activeSoloMsg && !cp.soloMsg) return false; if(activeSoloTts && !cp.soloTts && !cp.soloMsg) { /* skip messages for TTS-only solo? UI view still shows unless soloMsg*/ } if(search){ const hay = `${m.text||''} ${m.from||''} ${m.from_name||''} ${nicknameForNode(m.from||'', m.from_name||'')}`.toLowerCase(); if(!hay.includes(search)) return false; } return true; }); }
 
     async function refreshMeshMessagesOnly(){ if(!guardActive()) return; try{ const msgs=await api('/api/meshtastic/messages'); const items=msgs.items||[]; state.mesh.messages = items.length ? items.slice(0,50) : (msgs.lines||[]).slice(0,50); const tele=await api('/api/meshtastic/telemetry'); state.mesh.telemetry = (tele.lines||[]).slice(0,100); renderMeshLogs(); } catch(e){ /* swallow polling errors */ } }
     function startMeshPoll(intervalMs=5000){ if(state.mesh.pollId){ clearInterval(state.mesh.pollId); } state.mesh.pollId = setInterval(()=>{ refreshMeshMessagesOnly(); }, intervalMs); }
@@ -580,8 +626,8 @@
           const body = m.text || '';
           const via = m.via_mqtt ? 'MQTT' : 'RF';
           const route = isDirect && toName ? `${esc(fromName)} → ${esc(toName)}` : esc(fromName);
-          const channelPill = isDirect ? `<span class="pill">DM</span>` : `<span class="pill">${esc(chName)}</span>`;
-          return `<div class="log-entry"><div class="row" style="gap:8px; align-items:center; margin-bottom:4px">${channelPill}<span class="pill">${route}</span><span class="pill">${esc(via)}</span></div><div class="ts">${ts}</div><div>${esc(body)}</div></div>`;
+          const channelPill = isDirect ? `<span class="pill" data-ticket-detail="Meshtastic DM pill">DM</span>` : `<span class="pill" data-ticket-detail="Meshtastic channel pill ${esc(chName)}">${esc(chName)}</span>`;
+          return `<div class="log-entry"><div class="row" style="gap:8px; align-items:center; margin-bottom:4px">${channelPill}<span class="pill" data-ticket-detail="Meshtastic route pill">${route}</span><span class="pill">${esc(via)}</span></div><div class="ts">${ts}</div><div>${esc(body)}</div></div>`;
         }).join('') || '<span class="tag">No messages</span>';
       } else {
         box.innerHTML=renderLogLines(filtered) || '<span class="tag">No messages</span>';
@@ -652,6 +698,41 @@
     function showTicketModal(){ const m=$('#ticketModal'); if(m){ m.classList.add('show'); document.body.classList.add('modal-open'); setTimeout(()=>$('#ticketTitle')?.focus(),30); } }
     function hideTicketModal(){ const m=$('#ticketModal'); if(m){ m.classList.remove('show'); document.body.classList.remove('modal-open'); } }
 
+    // Ticket tagging
+    const ticketTagState = { active:false };
+    function startTicketTagging(){ ticketTagState.active=true; document.body.classList.add('ticket-pick'); log('Click an area to tag the support ticket.'); }
+    function endTicketTagging(){ ticketTagState.active=false; document.body.classList.remove('ticket-pick'); }
+    function subsystemFromTag(tag){ const t=(tag||'').toLowerCase(); if(t.includes('allstar')||t.includes('gmrs')) return 'AllStar'; if(t.includes('dvswitch')) return 'DVSwitch'; if(t.includes('aprs')) return 'APRS'; if(t.includes('mesh')) return 'Meshtastic'; if(t.includes('tts')) return 'AllStar'; return 'UI'; }
+    function describeTarget(el){
+      if(!el) return '';
+      const detailAttr = el.getAttribute('data-ticket-detail');
+      if(detailAttr) return detailAttr;
+      const aria = el.getAttribute('aria-label') || el.getAttribute('placeholder') || '';
+      const txt = (el.textContent||'').trim().slice(0,80);
+      const id = el.id ? `#${el.id}` : '';
+      return [aria||txt||'', id].filter(Boolean).join(' ').trim();
+    }
+
+    document.addEventListener('click',(e)=>{
+      if(!ticketTagState.active) return;
+      const panel = e.target.closest('[data-ticket-tag]');
+      if(!panel) return;
+      e.preventDefault(); e.stopPropagation();
+      const clicked = e.target;
+      endTicketTagging();
+      const tag=panel.getAttribute('data-ticket-tag')||'';
+      const label=panel.getAttribute('data-ticket-label')||tag;
+      const forced = panel.getAttribute('data-ticket-subsystem');
+      const sub = forced || subsystemFromTag(tag);
+      if($('#ticketSubsystem') && sub) $('#ticketSubsystem').value=sub;
+      const detail = describeTarget(clicked);
+      const note = `[Auto-captured] Area: ${label || tag}${detail?` · Element: ${detail}`:''}`;
+      state.tickets.tagNote = note;
+      showTicketModal();
+    });
+
+
+
     async function fetchTickets(){
       try{
         const {tickets=[]}=await api('/api/tickets?status=open','GET');
@@ -695,17 +776,22 @@
       const severity = ($('#ticketSeverity')?.value||'').trim();
       const desc = ($('#ticketDesc')?.value||'').trim();
       if(!title || !desc){ log('<b style="color:#ff9abf">Title and description required</b>'); return; }
+      const note = (state.tickets.tagNote||'').trim();
+      const finalDesc = note ? `${desc}
+
+${note}` : desc;
       try{
-        const res = await api('/api/tickets','POST',{title, description:desc, subsystem: subsystem||undefined, severity: severity||undefined});
+        const res = await api('/api/tickets','POST',{title, description:finalDesc, subsystem: subsystem||undefined, severity: severity||undefined});
         if(document.activeElement && typeof document.activeElement.blur === 'function') document.activeElement.blur();
         hideTicketModal();
+        state.tickets.tagNote = '';
         if($('#ticketTitle')) $('#ticketTitle').value='';
         if($('#ticketSubsystem')) $('#ticketSubsystem').value='';
         if($('#ticketSeverity')) $('#ticketSeverity').value='';
         if($('#ticketDesc')) $('#ticketDesc').value='';
         await fetchTickets();
         const id = res?.id || '';
-        log(`<b>Support ticket created</b> ${id? id+' · ':''}${title}`);
+        log(`<b>Support ticket created</b> ${id? id+' · ':''}${title}${note? ' · '+note:''}`);
       }catch(e){
         log(`<b style="color:#ff9abf">Ticket create failed</b> ${e.message||e}`);
       }
@@ -739,7 +825,7 @@
       document.querySelectorAll('[data-mesh-filter]').forEach(chip=> chip.onclick=()=>toggleMeshFilter(chip.getAttribute('data-mesh-filter')) ); 
       const meshSearch = $('#meshSearch'); if(meshSearch) meshSearch.oninput = ()=>{ state.mesh.filters.search = meshSearch.value.trim(); renderMeshLogs(); };
       $('#mapRefresh').onclick=refreshMap; $('#clearLog').onclick=()=>$('#log').innerHTML=''; 
-      $('#ticketNewBtn').onclick=showTicketModal; $('#ticketCancel').onclick=hideTicketModal; $('#ticketSubmit').onclick=createTicket; $('#ticketRefreshBtn').onclick=fetchTickets; 
+      $('#ticketNewBtn').onclick=showTicketModal; $('#ticketTagBtn').onclick=startTicketTagging; $('#ticketCancel').onclick=hideTicketModal; $('#ticketSubmit').onclick=createTicket; $('#ticketRefreshBtn').onclick=fetchTickets; 
       $('#meshProfileSave').onclick=saveMeshProfile; $('#meshProfileCancel').onclick=closeMeshProfile;
       $('#ttsSendBtn').onclick=sendTts;
     }
@@ -762,6 +848,7 @@
         const savedLow = localStorage.getItem(LOW_POWER_KEY) === '1';
         if(savedLow){ lowPower = true; $('#lowPowerSwitch').checked = true; setDot('#apiDot','paused'); log('<b>Low-power mode enabled</b> — polling and requests paused'); return; }
         await initData();
+        startAmiStream();
         setTimeout(()=>{ if(!lowPower){ fetchNodes(); fetchModes(); } }, 1500);
       } catch(e){
         setDot('#apiDot','err'); $('#apiText').textContent='Init error'; log(`<b style="color:#ff9abf">Init failed</b> ${e.message||e}`);

@@ -1,20 +1,24 @@
 from __future__ import annotations
 
+import asyncio
 import configparser
 import json
 import math
 import os
 import re
+import socket
 import subprocess
 import time
 from datetime import datetime
 from collections import defaultdict, deque
+import threading
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import requests
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
 APP_TITLE = "SusNet Local API"
@@ -63,7 +67,11 @@ APRS_DEFAULT_WATCH = "W4VDX"
 APRS_DEFAULT_ZIP = "28001"
 APRS_DEFAULT_RADIUS_MI = 200
 
-TARGET_NODE_RE = re.compile(r"\b(\d{3,7})\b")
+TARGET_NODE_RE = re.compile(r"(?:^|\D)(\d{3,7})(?!\d)")
+AMI_HOST = "127.0.0.1"
+AMI_PORT = 5038
+AMI_USER = "susnet-monitor"
+AMI_SECRET = "susnet-monitor-pass"
 
 
 class LinkRequest(BaseModel):
@@ -137,6 +145,12 @@ class TtsRequest(BaseModel):
 
 app = FastAPI(title=APP_TITLE, version=VERSION)
 
+# AMI event cache
+AMI_EVENTS: deque = deque(maxlen=200)
+AMI_LOCK = threading.Lock()
+AMI_RUNNING = False
+LINK_META: Dict[int, Dict[str, Any]] = defaultdict(dict)
+
 # Local-only use; allow same-LAN browsers
 app.add_middleware(
     CORSMiddleware,
@@ -178,6 +192,79 @@ def _run_meshtastic(args: List[str]) -> Optional[str]:
     except HTTPException as e:
         errors.append(f"serial: {e.detail}")
     return None
+
+
+def _append_ami_event(evt: Dict[str, Any]) -> None:
+    """Store AMI events for SSE subscribers."""
+    with AMI_LOCK:
+        AMI_EVENTS.append(evt)
+
+
+def _parse_ami_block(block: str) -> Dict[str, str]:
+    event: Dict[str, str] = {}
+    for line in block.splitlines():
+        if ":" not in line:
+            continue
+        k, v = line.split(":", 1)
+        event[k.strip()] = v.strip()
+    return event
+
+
+def _handle_ami_event(data: Dict[str, str]) -> None:
+    ev = data.get("Event", "").upper()
+    ts = time.time()
+    if ev in ("RPT_TXKEYED", "RPT_RXKEYED"):
+        node = int(data.get("Node") or data.get("Exten") or 0)
+        # Invert for UI semantics: RXKEYED means user is transmitting into the link; TXKEYED means audio coming from link.
+        state = "tx" if ev == "RPT_RXKEYED" else "rx"
+        meta = LINK_META[node]
+        if state == "tx":
+            meta["last_tx"] = ts
+        else:
+            meta["last_rx"] = ts
+        _append_ami_event({"ts": ts, "event": ev, "node": node, "state": state})
+    elif ev == "RPT_LINKS":
+        node = int(data.get("Node") or 0)
+        links = data.get("Links") or data.get("Status") or ""
+        LINK_META[node]["links_raw"] = links
+        _append_ami_event({"ts": ts, "event": ev, "node": node, "state": "links", "links": links})
+
+
+def _ami_thread() -> None:
+    """Maintain AMI connection and forward interesting events."""
+    global AMI_RUNNING
+    AMI_RUNNING = True
+    while True:
+        try:
+            sock = socket.create_connection((AMI_HOST, AMI_PORT), timeout=5)
+            login = (
+                f"Action: Login\r\nUsername: {AMI_USER}\r\nSecret: {AMI_SECRET}\r\nEvents: on\r\n\r\n"
+            )
+            sock.sendall(login.encode())
+            buf = b""
+            while True:
+                chunk = sock.recv(4096)
+                if not chunk:
+                    raise ConnectionError("AMI socket closed")
+                buf += chunk
+                while b"\r\n\r\n" in buf:
+                    block, buf = buf.split(b"\r\n\r\n", 1)
+                    try:
+                        data = _parse_ami_block(block.decode(errors="ignore"))
+                        _handle_ami_event(data)
+                    except Exception:
+                        continue
+        except Exception:
+            time.sleep(3)
+
+
+def _ensure_ami_thread() -> None:
+    """Start AMI listener once."""
+    global AMI_RUNNING
+    if AMI_RUNNING:
+        return
+    t = threading.Thread(target=_ami_thread, daemon=True)
+    t.start()
 
 
 def _speak_tts(text: str, node: Optional[str] = None) -> None:
@@ -835,7 +922,8 @@ def nodes():
 def connect(req: LinkRequest):
     local = req.localNode
     target = req.target
-    mode_index = 2 if req.mode == "monitor" else 3
+    # ilink 12 = permanent monitor, 13 = permanent transceive
+    mode_index = 12 if req.mode == "monitor" else 13
     out = _run_asterisk(f"rpt cmd {local} ilink {mode_index} {target}")
     return {"ok": True, "output": out}
 
@@ -860,7 +948,56 @@ def status(req: LocalRequest):
     local = req.localNode
     out = _run_asterisk(f"rpt nodes {local}")
     connected = _parse_connected(out, local)
-    return {"ok": True, "connected": connected, "raw": out}
+    now = time.time()
+    meta = LINK_META[local]
+    prev_links = meta.get("connected", [])
+    if connected:
+        # reset link_since if links changed
+        if prev_links != connected or not meta.get("link_since"):
+            meta["link_since"] = now
+    else:
+        meta["link_since"] = None
+    meta["connected"] = connected
+    return {
+        "ok": True,
+        "connected": connected,
+        "raw": out,
+        "meta": {
+            "link_since": meta.get("link_since"),
+            "last_tx": meta.get("last_tx"),
+            "last_rx": meta.get("last_rx"),
+            "links_raw": meta.get("links_raw", ""),
+        },
+    }
+
+
+@app.get("/api/events/ami")
+async def ami_events():
+    """Server-Sent Events stream for AMI updates (TX/RX/link)."""
+    start_idx = 0
+
+    async def event_stream():
+        nonlocal start_idx
+        while True:
+            payload = None
+            with AMI_LOCK:
+                if start_idx < len(AMI_EVENTS):
+                    payload = AMI_EVENTS[start_idx]
+                    start_idx += 1
+            if payload:
+                yield f"data: {json.dumps(payload)}\n\n"
+                continue
+            await asyncio.sleep(0.05)
+
+    return StreamingResponse(event_stream(), media_type="text/event-stream")
+
+
+@app.post("/api/status-tone")
+def status_tone(req: LocalRequest):
+    """Play the on-air status (*70) via ilink 5."""
+    local = req.localNode
+    out = _run_asterisk(f"rpt cmd {local} ilink 5")
+    return {"ok": True, "output": out}
 
 
 @app.post("/api/restart-asterisk")
@@ -1004,13 +1141,29 @@ def meshtastic_messages():
                 except Exception:
                     ch_idx = None
                 raw_channel = entry.get("channel")
-                channel = raw_channel or channel_map.get(ch_idx, "Primary")
-                try:
-                    as_int = int(str(raw_channel)) if raw_channel is not None else None
-                    if as_int is not None and as_int in channel_map:
-                        channel = channel_map[as_int]
-                except Exception:
-                    pass
+                # derive channel index if only a numeric string was provided
+                if ch_idx is None and raw_channel is not None:
+                    try:
+                        if str(raw_channel).strip().isdigit():
+                            ch_idx = int(str(raw_channel).strip())
+                    except Exception:
+                        ch_idx = None
+                # map common labels to known indexes
+                if ch_idx is None and isinstance(raw_channel, str):
+                    rc_low = raw_channel.lower()
+                    if rc_low.startswith("primary"):
+                        ch_idx = 0
+                    elif rc_low.startswith("secondary"):
+                        ch_idx = 1
+                # resolve channel name
+                channel = None
+                if ch_idx is not None and ch_idx in channel_map:
+                    channel = channel_map[ch_idx]
+                if not channel and raw_channel:
+                    # if raw_channel is numeric but not in channel_map, keep as string
+                    channel = str(raw_channel)
+                if not channel:
+                    channel = channel_map.get(ch_idx, "Primary")
                 direct = bool(to_id and to_id not in ("^all", "^local"))
                 from_name = _name_for(from_id)
                 to_name = _name_for(to_id) if to_id else ""
@@ -1223,6 +1376,9 @@ def aprs_messages():
 def aprs_config():
     cfg = _ensure_aprs_geo(_get_aprs_config())
     cfg["filter"] = _build_aprs_filter(cfg)
+    # Normalize tts_mode for UI
+    if cfg.get("tts_mode") not in {"off", "me", "all"}:
+        cfg["tts_mode"] = "me"
     return {"ok": True, "config": cfg}
 
 
@@ -1241,6 +1397,8 @@ def aprs_config_update(req: AprsConfigRequest):
         "tts_mode": (req.tts_mode or "").lower() or None,
         "tts_node": (req.tts_node or "").strip() or None,
     }
+    if cfg["tts_mode"] not in {"off", "me", "all", None, ""}:
+        cfg["tts_mode"] = "me"
     geo = _geocode_zip(zip_code)
     if not geo:
         raise HTTPException(status_code=400, detail="Failed to geocode ZIP")
@@ -1420,6 +1578,8 @@ def speak_tts(req: TtsRequest):
     _speak_tts(text, req.node)
     return {"ok": True}
 
+
+_ensure_ami_thread()
 
 if __name__ == "__main__":
     import uvicorn

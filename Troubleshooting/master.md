@@ -1,7 +1,8 @@
 # Troubleshooting Master Log
 
 ## Open Tickets
-- (none)
+- TKT-1013 [medium] GMRS HTTPS registration TLS CN mismatch (subsystem: AllStar GMRS HTTP registration, opened: 2025-12-17)
+- TKT-1017 [medium] Meshtastic channel pills show generic names (Primary/Secondary) instead of actual channel names (subsystem: Meshtastic UI, opened: 2025-12-17)
 
 ## Closed Tickets
 - TKT-1000 [low] 1000 - still only using one channel to send (closed: )

@@ -35,6 +35,7 @@ DEFAULT_FILTER = None  # will be built from target if not provided
 DEFAULT_WATCH = "W4VDX"
 APRS_TTS_MODE = os.getenv("APRS_TTS_MODE", "me").lower()  # off|me|all
 APRS_TTS_NODE = os.getenv("APRS_TTS_NODE") or os.getenv("SUSNET_TTS_NODE") or "66190"
+APRS_WATCH = (os.getenv("APRS_WATCH") or DEFAULT_WATCH).upper()
 APRS_TTS_ENABLED = str(os.getenv("APRS_TTS", "0")).lower() in ("1", "true", "yes", "on")
 APRS_TTS_NODE = os.getenv("APRS_TTS_NODE") or os.getenv("SUSNET_TTS_NODE") or "66190"
 
