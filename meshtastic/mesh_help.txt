@@ -1,0 +1,56 @@
+Mesh daemon / CLI integration (listener.py)
+
+This daemon:
+  - Connects via TCP if MESHTASTIC_HOST is set (port MESHTASTIC_TCP_PORT or 4403),
+    otherwise uses serial at MESHTASTIC_SERIAL_PORT or /dev/ttyUSB0.
+  - Subscribes to all packets from the radio.
+  - Logs:
+      * Telemetry in a human friendly one-liner format.
+      * Text messages in:
+          - messages.txt (last 1000 lines, human readable)
+          - messages.json (last 100 messages, structured)
+  - Watches queue.txt for commands pushed by the 'mesh' shell wrapper.
+
+Files:
+  /home/gabe0000/meshtastic/mesh.log        - Everything the daemon sees/does (telemetry, commands, errors)
+  /home/gabe0000/meshtastic/messages.txt    - Last 1000 text messages
+  /home/gabe0000/meshtastic/messages.json   - Last 100 text messages as JSON
+  /home/gabe0000/meshtastic/queue.txt      - One-shot command queue written by 'mesh'
+  /home/gabe0000/meshtastic/my_id.txt      - Our node ID (!XXXXXXXX) once learned
+  /home/gabe0000/meshtastic/mesh_help.txt       - This file
+
+Expected 'mesh' shell commands:
+  mesh send <message>
+      -> appends a SEND: line into queue.txt
+         daemon sends it via iface.sendText(message)
+
+  mesh do STATUS
+      -> appends CMD:STATUS into queue.txt
+         daemon prints a one-line status based on last telemetry
+
+  mesh do INFO
+      -> appends CMD:INFO into queue.txt
+         daemon dumps interface.myInfo into mesh.log (JSON-ish)
+
+  mesh do MUTE
+      -> appends CMD:MUTE into queue.txt
+         daemon suppresses AllStar TTS announcements until UNMUTE/LOUD
+
+  mesh do UNMUTE
+      -> appends CMD:UNMUTE into queue.txt
+         daemon re-enables AllStar TTS announcements (alias: LOUD)
+
+  mesh help
+      -> prints this file
+
+  mesh last 5
+      -> prints the last 5 lines from messages.txt
+
+  mesh my last 5
+      -> uses messages.json + my_id.txt to show the last 5 messages
+         that were addressed directly to our node (to_id == my_id).
+
+Notes:
+  - 'mesh do' is intentionally LIMITED to internal commands (STATUS, INFO, etc.)
+    If you want the full python 'meshtastic' CLI surface, stop listener.py
+    and run the meshtastic CLI directly so it can own the serial port.
