@@ -1,0 +1,17 @@
+# Security-sensitive local files
+.git-credentials
+.bash_history
+
+# Local secrets/runtime data
+susnet-next/.secrets/
+susnet-next/data/
+susnet-next/ops/stacks/.env
+
+# Local build/export artifacts
+exports/
+__pycache__/
+*.pyc
+.cache/
+.config/
+.vscode-server/
+.dotnet/
