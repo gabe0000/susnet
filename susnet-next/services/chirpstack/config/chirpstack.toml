@@ -1,0 +1,12 @@
+[logging]
+level="info"
+
+[postgresql]
+dsn="postgresql://chirpstack:changeme@postgres/chirpstack?sslmode=disable"
+
+[redis]
+servers=["redis://redis/"]
+
+[api]
+bind="0.0.0.0:8080"
+secret="susnet-next-dev-secret-change-me"

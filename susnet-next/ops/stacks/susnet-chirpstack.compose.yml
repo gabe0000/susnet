@@ -1,0 +1,56 @@
+version: "3.8"
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: susnet-next-redis
+    restart: unless-stopped
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: susnet-next-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=${CHIRPSTACK_DB_USER:-chirpstack}
+      - POSTGRES_PASSWORD=${CHIRPSTACK_DB_PASSWORD:-changeme}
+      - POSTGRES_DB=${CHIRPSTACK_DB_NAME:-chirpstack}
+    volumes:
+      - /home/gabe0000/susnet-next/data/postgres:/var/lib/postgresql/data
+
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: susnet-next-mosquitto
+    restart: unless-stopped
+    ports:
+      - "${MQTT_PORT:-1883}:1883"
+    volumes:
+      - /home/gabe0000/susnet-next/services/chirpstack/config/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - /home/gabe0000/susnet-next/data/mosquitto/data:/mosquitto/data
+      - /home/gabe0000/susnet-next/data/mosquitto/log:/mosquitto/log
+
+  chirpstack:
+    image: chirpstack/chirpstack:4
+    container_name: susnet-next-chirpstack
+    restart: unless-stopped
+    depends_on:
+      - postgres
+      - redis
+      - mosquitto
+    command: --config /etc/chirpstack
+    ports:
+      - "${CHIRPSTACK_API_PORT:-8081}:8080"
+    volumes:
+      - /home/gabe0000/susnet-next/services/chirpstack/config/chirpstack:/etc/chirpstack:ro
+
+  chirpstack-gateway-bridge:
+    image: chirpstack/chirpstack-gateway-bridge:4
+    container_name: susnet-next-chirpstack-gw-bridge
+    restart: unless-stopped
+    depends_on:
+      - mosquitto
+    command: -c /etc/chirpstack-gateway-bridge/chirpstack-gateway-bridge.toml
+    ports:
+      - "${CHIRPSTACK_GWBRIDGE_UDP_PORT:-1701}:1700/udp"
+    volumes:
+      - /home/gabe0000/susnet-next/services/chirpstack/config/chirpstack-gateway-bridge.toml:/etc/chirpstack-gateway-bridge/chirpstack-gateway-bridge.toml:ro

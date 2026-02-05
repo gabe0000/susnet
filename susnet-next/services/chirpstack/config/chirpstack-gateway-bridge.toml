@@ -1,0 +1,14 @@
+[logging]
+level="info"
+
+[integration]
+marshaler="json"
+
+[integration.mqtt]
+server="tcp://mosquitto:1883/"
+
+[backend]
+enabled="semtech_udp"
+
+[backend.semtech_udp]
+udp_bind="0.0.0.0:1700"

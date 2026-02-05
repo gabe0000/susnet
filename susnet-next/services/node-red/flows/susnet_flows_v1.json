@@ -1,0 +1,42 @@
+[
+  {"id":"tab_sysadmin","type":"tab","label":"System Admin","disabled":false,"info":"System-wide checks and ops actions"},
+  {"id":"tab_allstar","type":"tab","label":"AllStar GMRSHub","disabled":false,"info":"AllStar/GMRS health and extnodes"},
+  {"id":"tab_aprs","type":"tab","label":"APRS","disabled":false,"info":"APRS messages and config checks"},
+  {"id":"tab_mesh","type":"tab","label":"Meshtastic","disabled":false,"info":"Meshtastic message and telemetry checks"},
+
+  {"id":"inj_sys_poll","type":"inject","z":"tab_sysadmin","name":"Poll services (30s)","props":[{"p":"payload"}],"repeat":"30","once":true,"onceDelay":"2","topic":"","payload":"","payloadType":"date","x":180,"y":80,"wires":[["http_services"]]},
+  {"id":"http_services","type":"http request","z":"tab_sysadmin","name":"GET /api/services","method":"GET","ret":"obj","paytoqs":"ignore","url":"http://host.docker.internal:8088/api/services","tls":"","persist":false,"proxy":"","authType":"","x":430,"y":80,"wires":[["dbg_services"]]},
+  {"id":"dbg_services","type":"debug","z":"tab_sysadmin","name":"services","active":true,"tosidebar":true,"console":false,"tostatus":true,"complete":"payload","targetType":"msg","statusVal":"payload","statusType":"auto","x":650,"y":80,"wires":[]},
+
+  {"id":"inj_health_poll","type":"inject","z":"tab_sysadmin","name":"Poll health (30s)","props":[{"p":"payload"}],"repeat":"30","once":true,"onceDelay":"3","topic":"","payload":"","payloadType":"date","x":180,"y":140,"wires":[["http_health"]]},
+  {"id":"http_health","type":"http request","z":"tab_sysadmin","name":"GET /api/health","method":"GET","ret":"obj","paytoqs":"ignore","url":"http://host.docker.internal:8088/api/health","tls":"","persist":false,"proxy":"","authType":"","x":420,"y":140,"wires":[["dbg_health"]]},
+  {"id":"dbg_health","type":"debug","z":"tab_sysadmin","name":"health","active":true,"tosidebar":true,"console":false,"tostatus":true,"complete":"payload","targetType":"msg","statusVal":"payload","statusType":"auto","x":640,"y":140,"wires":[]},
+
+  {"id":"inj_gmrs_refresh","type":"inject","z":"tab_sysadmin","name":"Manual: refresh GMRS extnodes","props":[{"p":"payload"}],"repeat":"","once":false,"onceDelay":0.1,"topic":"","payload":"{}","payloadType":"json","x":220,"y":220,"wires":[["http_refresh_gmrs"]]},
+  {"id":"http_refresh_gmrs","type":"http request","z":"tab_sysadmin","name":"POST /api/allstar/refresh-gmrs-list","method":"POST","ret":"obj","paytoqs":"ignore","url":"http://host.docker.internal:8088/api/allstar/refresh-gmrs-list","tls":"","persist":false,"proxy":"","authType":"","x":520,"y":220,"wires":[["dbg_refresh_gmrs"]]},
+  {"id":"dbg_refresh_gmrs","type":"debug","z":"tab_sysadmin","name":"refresh result","active":true,"tosidebar":true,"console":false,"tostatus":true,"complete":"payload","targetType":"msg","statusVal":"payload","statusType":"auto","x":770,"y":220,"wires":[]},
+
+  {"id":"inj_nodes_poll","type":"inject","z":"tab_allstar","name":"Poll nodes (20s)","props":[{"p":"payload"}],"repeat":"20","once":true,"onceDelay":"2","topic":"","payload":"","payloadType":"date","x":170,"y":80,"wires":[["http_nodes"]]},
+  {"id":"http_nodes","type":"http request","z":"tab_allstar","name":"GET /api/nodes","method":"GET","ret":"obj","paytoqs":"ignore","url":"http://host.docker.internal:8088/api/nodes","tls":"","persist":false,"proxy":"","authType":"","x":380,"y":80,"wires":[["dbg_nodes"]]},
+  {"id":"dbg_nodes","type":"debug","z":"tab_allstar","name":"nodes","active":true,"tosidebar":true,"console":false,"tostatus":true,"complete":"payload","targetType":"msg","statusVal":"payload","statusType":"auto","x":560,"y":80,"wires":[]},
+
+  {"id":"inj_extnodes_poll","type":"inject","z":"tab_allstar","name":"Poll extnodes (531121)","props":[{"p":"payload"}],"repeat":"30","once":true,"onceDelay":"4","topic":"","payload":"","payloadType":"date","x":190,"y":140,"wires":[["http_extnodes"]]},
+  {"id":"http_extnodes","type":"http request","z":"tab_allstar","name":"GET /api/allstar/gmrs-extnodes?node=531121&limit=20","method":"GET","ret":"obj","paytoqs":"ignore","url":"http://host.docker.internal:8088/api/allstar/gmrs-extnodes?node=531121&limit=20","tls":"","persist":false,"proxy":"","authType":"","x":550,"y":140,"wires":[["dbg_extnodes"]]},
+  {"id":"dbg_extnodes","type":"debug","z":"tab_allstar","name":"gmrs extnodes","active":true,"tosidebar":true,"console":false,"tostatus":true,"complete":"payload","targetType":"msg","statusVal":"payload","statusType":"auto","x":790,"y":140,"wires":[]},
+
+  {"id":"inj_aprs_msg","type":"inject","z":"tab_aprs","name":"Poll APRS messages (20s)","props":[{"p":"payload"}],"repeat":"20","once":true,"onceDelay":"2","topic":"","payload":"","payloadType":"date","x":190,"y":80,"wires":[["http_aprs_msg"]]},
+  {"id":"http_aprs_msg","type":"http request","z":"tab_aprs","name":"GET /api/aprs/messages","method":"GET","ret":"obj","paytoqs":"ignore","url":"http://host.docker.internal:8088/api/aprs/messages","tls":"","persist":false,"proxy":"","authType":"","x":430,"y":80,"wires":[["dbg_aprs_msg"]]},
+  {"id":"dbg_aprs_msg","type":"debug","z":"tab_aprs","name":"aprs messages","active":true,"tosidebar":true,"console":false,"tostatus":true,"complete":"payload","targetType":"msg","statusVal":"payload","statusType":"auto","x":650,"y":80,"wires":[]},
+
+  {"id":"inj_aprs_cfg","type":"inject","z":"tab_aprs","name":"Poll APRS config (60s)","props":[{"p":"payload"}],"repeat":"60","once":true,"onceDelay":"3","topic":"","payload":"","payloadType":"date","x":180,"y":140,"wires":[["http_aprs_cfg"]]},
+  {"id":"http_aprs_cfg","type":"http request","z":"tab_aprs","name":"GET /api/aprs/config","method":"GET","ret":"obj","paytoqs":"ignore","url":"http://host.docker.internal:8088/api/aprs/config","tls":"","persist":false,"proxy":"","authType":"","x":410,"y":140,"wires":[["dbg_aprs_cfg"]]},
+  {"id":"dbg_aprs_cfg","type":"debug","z":"tab_aprs","name":"aprs config","active":true,"tosidebar":true,"console":false,"tostatus":true,"complete":"payload","targetType":"msg","statusVal":"payload","statusType":"auto","x":620,"y":140,"wires":[]},
+
+  {"id":"inj_mesh_msg","type":"inject","z":"tab_mesh","name":"Poll mesh messages (15s)","props":[{"p":"payload"}],"repeat":"15","once":true,"onceDelay":"2","topic":"","payload":"","payloadType":"date","x":200,"y":80,"wires":[["http_mesh_msg"]]},
+  {"id":"http_mesh_msg","type":"http request","z":"tab_mesh","name":"GET /api/meshtastic/messages","method":"GET","ret":"obj","paytoqs":"ignore","url":"http://host.docker.internal:8088/api/meshtastic/messages","tls":"","persist":false,"proxy":"","authType":"","x":460,"y":80,"wires":[["dbg_mesh_msg"]]},
+  {"id":"dbg_mesh_msg","type":"debug","z":"tab_mesh","name":"mesh messages","active":true,"tosidebar":true,"console":false,"tostatus":true,"complete":"payload","targetType":"msg","statusVal":"payload","statusType":"auto","x":690,"y":80,"wires":[]},
+
+  {"id":"inj_mesh_tel","type":"inject","z":"tab_mesh","name":"Poll mesh telemetry (30s)","props":[{"p":"payload"}],"repeat":"30","once":true,"onceDelay":"3","topic":"","payload":"","payloadType":"date","x":210,"y":140,"wires":[["http_mesh_tel"]]},
+  {"id":"http_mesh_tel","type":"http request","z":"tab_mesh","name":"GET /api/meshtastic/telemetry","method":"GET","ret":"obj","paytoqs":"ignore","url":"http://host.docker.internal:8088/api/meshtastic/telemetry","tls":"","persist":false,"proxy":"","authType":"","x":470,"y":140,"wires":[["dbg_mesh_tel"]]},
+  {"id":"dbg_mesh_tel","type":"debug","z":"tab_mesh","name":"mesh telemetry","active":true,"tosidebar":true,"console":false,"tostatus":true,"complete":"payload","targetType":"msg","statusVal":"payload","statusType":"auto","x":700,"y":140,"wires":[]}
+]

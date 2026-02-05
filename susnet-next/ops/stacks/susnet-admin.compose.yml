@@ -1,0 +1,19 @@
+version: "3.8"
+
+services:
+  nodered:
+    image: nodered/node-red:4.0.9
+    container_name: susnet-next-nodered
+    restart: unless-stopped
+    ports:
+      - "${NODERED_PORT:-1881}:1880"
+    environment:
+      - TZ=${TZ:-America/New_York}
+      - NODE_RED_ENABLE_PROJECTS=true
+      - NODERED_CREDENTIAL_SECRET=${NODERED_CREDENTIAL_SECRET}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - /home/gabe0000/susnet-next/data/nodered:/data
+      - /home/gabe0000/susnet-next/services/node-red/flows:/opt/susnet-flows
+      - /home/gabe0000/susnet-next/services/node-red/settings.js:/data/settings.js:ro
