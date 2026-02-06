@@ -5,7 +5,7 @@ Run a parallel `v2` containerized platform while leaving `v1` untouched until cu
 
 ## Module boundaries
 - `v1-legacy-adapter`: bridge and migration helpers from current host services.
-- `core-api`: unified API and auth boundary.
+- `core-api`: unified API gateway and auth boundary.
 - `ui`: operator UI and setup workflows.
 - `bootstrap-api`: first-boot setup flow (`susnet.setup` AP onboarding).
 - `gmrs-updater`: controlled extnodes update and validation.
@@ -21,12 +21,19 @@ Run a parallel `v2` containerized platform while leaving `v1` untouched until cu
 - Portainer manages SusNet Next as separate app stacks (one compose per app).
 - Node-RED provides cross-module event workflows.
 - Each protocol module reports through API contracts, not direct UI coupling.
+- UI and Node-RED call the Core API gateway only.
 
 ## Current stack split
 - Bootstrap container:
   - `susnet-next-portainer` (not self-managed inside a Portainer stack)
 - Stack: `susnet-admin`
   - `susnet-next-nodered`
+- Stack: `susnet-core`
+  - `susnet-core-api`
+  - `susnet-module-allstar`
+  - `susnet-module-gmrshub`
+  - `susnet-module-aprs`
+  - `susnet-module-meshtastic`
 - Stack: `susnet-chirpstack`
   - `susnet-next-chirpstack`
   - `susnet-next-chirpstack-gw-bridge`

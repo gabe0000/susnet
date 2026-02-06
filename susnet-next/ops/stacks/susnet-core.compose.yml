@@ -1,0 +1,102 @@
+version: "3.8"
+
+services:
+  core-api:
+    image: tiangolo/uvicorn-gunicorn-fastapi:python3.11
+    container_name: susnet-core-api
+    restart: unless-stopped
+    ports:
+      - "${CORE_API_PORT:-8090}:8080"
+    volumes:
+      - /home/gabe0000/susnet-next/services/core-api/app:/app
+    environment:
+      - MODULE_NAME=main
+      - VARIABLE_NAME=app
+      - APP_MODULE=main:app
+      - PORT=8080
+      - ALLSTAR_API_URL=http://module-allstar:8080
+      - GMRS_API_URL=http://module-gmrshub:8080
+      - APRS_API_URL=http://module-aprs:8080
+      - MESH_API_URL=http://module-meshtastic:8080
+      - V1_BASE_URL=${V1_BASE_URL:-http://host.docker.internal:8088}
+      - HTTP_TIMEOUT=${HTTP_TIMEOUT:-5}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - susnet_next
+
+  module-allstar:
+    image: tiangolo/uvicorn-gunicorn-fastapi:python3.11
+    container_name: susnet-module-allstar
+    restart: unless-stopped
+    volumes:
+      - /home/gabe0000/susnet-next/services/module-allstar/app:/app
+    environment:
+      - V1_BASE_URL=${V1_BASE_URL:-http://host.docker.internal:8088}
+      - HTTP_TIMEOUT=${HTTP_TIMEOUT:-5}
+      - MODULE_NAME=main
+      - VARIABLE_NAME=app
+      - APP_MODULE=main:app
+      - PORT=8080
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - susnet_next
+
+  module-gmrshub:
+    image: tiangolo/uvicorn-gunicorn-fastapi:python3.11
+    container_name: susnet-module-gmrshub
+    restart: unless-stopped
+    volumes:
+      - /home/gabe0000/susnet-next/services/module-gmrshub/app:/app
+    environment:
+      - V1_BASE_URL=${V1_BASE_URL:-http://host.docker.internal:8088}
+      - HTTP_TIMEOUT=${HTTP_TIMEOUT:-5}
+      - MODULE_NAME=main
+      - VARIABLE_NAME=app
+      - APP_MODULE=main:app
+      - PORT=8080
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - susnet_next
+
+  module-aprs:
+    image: tiangolo/uvicorn-gunicorn-fastapi:python3.11
+    container_name: susnet-module-aprs
+    restart: unless-stopped
+    volumes:
+      - /home/gabe0000/susnet-next/services/module-aprs/app:/app
+    environment:
+      - V1_BASE_URL=${V1_BASE_URL:-http://host.docker.internal:8088}
+      - HTTP_TIMEOUT=${HTTP_TIMEOUT:-5}
+      - MODULE_NAME=main
+      - VARIABLE_NAME=app
+      - APP_MODULE=main:app
+      - PORT=8080
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - susnet_next
+
+  module-meshtastic:
+    image: tiangolo/uvicorn-gunicorn-fastapi:python3.11
+    container_name: susnet-module-meshtastic
+    restart: unless-stopped
+    volumes:
+      - /home/gabe0000/susnet-next/services/module-meshtastic/app:/app
+    environment:
+      - V1_BASE_URL=${V1_BASE_URL:-http://host.docker.internal:8088}
+      - HTTP_TIMEOUT=${HTTP_TIMEOUT:-5}
+      - MODULE_NAME=main
+      - VARIABLE_NAME=app
+      - APP_MODULE=main:app
+      - PORT=8080
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - susnet_next
+
+networks:
+  susnet_next:
+    external: true

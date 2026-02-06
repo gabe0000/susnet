@@ -17,3 +17,9 @@ services:
       - /home/gabe0000/susnet-next/data/nodered:/data
       - /home/gabe0000/susnet-next/services/node-red/flows:/opt/susnet-flows
       - /home/gabe0000/susnet-next/services/node-red/settings.js:/data/settings.js:ro
+    networks:
+      - susnet_next
+
+networks:
+  susnet_next:
+    external: true

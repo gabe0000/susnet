@@ -17,7 +17,7 @@ Planned use:
 - Cross-module event bus fanout
 - Setup wizard backend glue logic
 
-Seeded flow pack (v2):
+Seeded flow pack (v2-only):
 - Main runtime tab in editor: `SusNet Runtime`
 - Dashboard pages:
   - Home
@@ -26,7 +26,7 @@ Seeded flow pack (v2):
   - APRS
   - Meshtastic
   - Admin
-- Flow file:
+- Flow file (v2-only, gateway based):
   - `/home/gabe0000/susnet-next/services/node-red/flows/susnet_flows_v2.json`
 - Runtime backup captured before v2 seed:
   - `/home/gabe0000/susnet-next/data/nodered/flows.pre_v2.backup.json`

@@ -5,18 +5,21 @@ This workspace is the next-generation stack buildout and does **not** replace yo
 ## Included in this phase
 - Portainer (container management control plane)
 - `susnet-admin` stack (Node-RED)
+- `susnet-core` stack (core gateway + module APIs)
 - `susnet-chirpstack` stack (ChirpStack + Redis + Postgres + Mosquitto + Gateway Bridge)
 
 ## Stack Model
 - Portainer runs as its own bootstrap container.
 - Each app has its own compose file (one YAML per app stack):
   - `ops/stacks/susnet-admin.compose.yml`
+  - `ops/stacks/susnet-core.compose.yml`
   - `ops/stacks/susnet-chirpstack.compose.yml`
 
 ## Access
 - Portainer: `https://<pi-ip>:9444`
 - Node-RED: `http://<pi-ip>:1881`
 - Node-RED Dashboard: `http://<pi-ip>:1881/ui/`
+- Core API (gateway): `http://<pi-ip>:8090`
 - ChirpStack: `http://<pi-ip>:8081`
 
 ## Notes

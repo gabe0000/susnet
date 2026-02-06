@@ -6,6 +6,8 @@
   - `susnet-admin`:
     - Node-RED on `http://susnet.local:1881`
     - Node-RED Dashboard on `http://susnet.local:1881/ui/`
+  - `susnet-core`:
+    - Core API on `http://susnet.local:8090`
   - `susnet-chirpstack`:
     - ChirpStack on `http://susnet.local:8081`
     - Mosquitto on `tcp://susnet.local:1883`
@@ -33,9 +35,10 @@
 - Portainer HTTP UI port is disabled on host (HTTPS only on 9444).
 - Node-RED editor/API requires login.
 - Node-RED credential encryption secret is set.
-- Node-RED seeded flow pack:
+- Node-RED seeded flow pack (v2-only):
   - runtime tab: `SusNet Runtime`
   - dashboard pages: `Home`, `AllStar`, `GMRSHub`, `APRS`, `Meshtastic`, `Admin`
+  - all HTTP nodes point to the Core API gateway
 
 ## Recovery quick checks
 - Container status:
