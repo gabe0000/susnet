@@ -19,6 +19,7 @@ Current key files and folders:
 - `BuilderNotes.md` – subsystem deep dives (APRS RF experiments, Pi split, etc.).
 - `IdeaBacklog.md` / `FeatureRoadmap.md` – pipeline from brainstorming to delivery.
 - `DesignConsiderations.md` – overarching requirements and constraints.
+- `BackupAndRecovery.md` – simple backup/restore instructions.
 - `ReplicationGuide.md` – how to build another box (WIP).
 - `../Troubleshooting/` (top-level) – support tickets and resolutions.
 - `Agents/` – coding-agent playbooks (`UpdatePlaybook.md`, `AgentOps.md`, folder README).
