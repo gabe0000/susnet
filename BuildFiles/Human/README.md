@@ -6,3 +6,8 @@ Suggested contents:
 - Setup/teardown steps for radios, power, and networking.
 - How to run the web UI, AllStar/DVSwitch basics, and where to find logs.
 - Safety reminders (power, antennas, regulatory).
+
+Quick access:
+- `QuickStart.md` – fastest path to a working system.
+- `OwnersManual.md` – plain-English overview and daily ops.
+- `Preamble_Tomorrow.md` – recap + next-session focus.

@@ -21,6 +21,8 @@ Current key files and folders:
 - `DesignConsiderations.md` – overarching requirements and constraints.
 - `BackupAndRecovery.md` – simple backup/restore instructions.
 - `ReplicationGuide.md` – how to build another box (WIP).
+- `Human/QuickStart.md` – short, human-friendly runbook.
+- `Human/OwnersManual.md` – operator overview + daily workflow.
 - `../Troubleshooting/` (top-level) – support tickets and resolutions.
 - `Agents/` – coding-agent playbooks (`UpdatePlaybook.md`, `AgentOps.md`, folder README).
 - `Human/` – human-facing notes/checklists (folder README).
