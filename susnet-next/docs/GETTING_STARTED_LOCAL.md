@@ -1,48 +1,70 @@
 # SusNet Next Local Guide
 
-## What is running now
-- `susnet-next-portainer` on `https://susnet.local:9444`
-- Portainer stacks:
-  - `susnet-admin`:
-    - Node-RED on `http://susnet.local:1881`
-    - Node-RED Dashboard on `http://susnet.local:1881/ui/`
-  - `susnet-core`:
-    - Core API on `http://susnet.local:8090`
-  - `susnet-chirpstack`:
-    - ChirpStack on `http://susnet.local:8081`
-    - Mosquitto on `tcp://susnet.local:1883`
-    - ChirpStack Gateway Bridge on `udp://susnet.local:1701`
+## 1) Confirm stack health
+Run:
 
-## Credentials location (local only)
-- `/home/gabe0000/susnet-next/.secrets/initial_credentials.txt`
-- Keep this file private.
+```bash
+sudo docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'
+curl -sS http://127.0.0.1:8090/api/health
+```
 
-## Basic daily workflow
-1. Open Portainer and sign in as `admin`.
-2. Go to `Stacks`.
-3. Choose the app stack (`susnet-admin` or `susnet-chirpstack`).
-4. Use `Stop` / `Start` / `Recreate` for lifecycle.
-4. Open Node-RED and ChirpStack from their URLs above.
+Expected:
+- Containers are `Up`
+- Gateway `ok=true`
 
-## Update stack config
-1. Edit the target file:
-   - `/home/gabe0000/susnet-next/ops/stacks/susnet-admin.compose.yml`
-   - `/home/gabe0000/susnet-next/ops/stacks/susnet-chirpstack.compose.yml`
-2. In Portainer: `Stacks` -> target stack -> `Editor`
-3. Paste updated compose and click `Update the stack`.
+## 2) Operator URLs
+- Portainer: `https://susnet.local:9444`
+- Node-RED editor: `http://susnet.local:1881`
+- Node-RED dashboard: `http://susnet.local:1881/ui/`
+- Core API: `http://susnet.local:8090`
+- ChirpStack: `http://susnet.local:8081`
 
-## Security defaults now enforced
-- Portainer HTTP UI port is disabled on host (HTTPS only on 9444).
-- Node-RED editor/API requires login.
-- Node-RED credential encryption secret is set.
-- Node-RED seeded flow pack (v2-only):
-  - runtime tab: `SusNet Runtime`
-  - dashboard pages: `Home`, `AllStar`, `GMRSHub`, `APRS`, `Meshtastic`, `Admin`
-  - all HTTP nodes point to the Core API gateway
+## 3) Inbound readiness checks (AllStar + GMRS)
 
-## Recovery quick checks
-- Container status:
-  - `sudo docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'`
-- Node-RED auth check:
-  - `curl -si http://127.0.0.1:1881/flows | head`
-  - should return `401 Unauthorized` without token.
+### AllStar
+```bash
+curl -sS http://susnet.local:8090/api/allstar/inbound/health
+curl -sS -X POST -H 'content-type: application/json' \
+  -d '{"duration":45}' \
+  http://susnet.local:8090/api/allstar/inbound/test-window
+```
+
+### GMRSHub
+```bash
+curl -sS http://susnet.local:8090/api/gmrshub/inbound/health
+curl -sS -X POST -H 'content-type: application/json' \
+  -d '{"duration":45}' \
+  http://susnet.local:8090/api/gmrshub/inbound/test-window
+```
+
+Interpretation:
+- `healthy/public-reachable` = inbound packets observed during test window.
+- `L2 Router NAT/forward mismatch` = registered/listening but inbound packets not observed.
+
+## 4) Manual GMRS extnodes refresh
+- Node-RED dashboard button: `GMRSHub -> Refresh GMRS List`
+- or API:
+
+```bash
+curl -sS -X POST http://susnet.local:8090/api/allstar/refresh-extnodes
+```
+
+## 5) Baseline diagnostics snapshot script
+
+```bash
+/home/gabe0000/susnet-next/scripts/collect_inbound_baseline.sh
+```
+
+Outputs to `/home/gabe0000/backups/inbound-checks-<timestamp>/`.
+
+## 6) Restart only affected components
+
+```bash
+sudo systemctl restart susnet-api
+sudo docker restart susnet-module-allstar susnet-module-gmrshub susnet-core-api
+sudo docker restart susnet-next-nodered
+```
+
+## 7) Public browser access (UI)
+SusNet browser UI can be exposed using Tailscale Funnel to Apache (`http://127.0.0.1:80`) while preserving auth at `/susnet/`.
+This is for UI management access and is separate from IAX inbound behavior.

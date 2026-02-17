@@ -4,7 +4,7 @@ import os
 from typing import Any, Dict, Optional
 
 import httpx
-from fastapi import FastAPI, Query
+from fastapi import Body, FastAPI, Query
 from fastapi.responses import JSONResponse
 
 V1_BASE_URL = os.getenv("V1_BASE_URL", "http://host.docker.internal:8088")
@@ -38,9 +38,9 @@ def _get(path: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     return _wrap_ok(_safe_json(resp))
 
 
-def _post(path: str, payload: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+def _post(path: str, payload: Optional[Dict[str, Any]] = None, timeout: Optional[float] = None) -> Dict[str, Any]:
     try:
-        resp = httpx.post(f"{V1_BASE_URL}{path}", json=payload, timeout=TIMEOUT)
+        resp = httpx.post(f"{V1_BASE_URL}{path}", json=payload, timeout=timeout or TIMEOUT)
     except Exception as exc:
         return _wrap_err(str(exc))
     if resp.status_code >= 400:
@@ -71,6 +71,25 @@ def extnodes(node: str = Query(...), limit: int = Query(20)):
 @app.post("/refresh-extnodes")
 def refresh_extnodes():
     return _post("/api/allstar/refresh-gmrs-list", {})
+
+
+@app.get("/inbound/health")
+def inbound_health(node: Optional[str] = Query(None)):
+    params: Dict[str, Any] = {}
+    if node:
+        params["node"] = str(node)
+    return _get("/api/allstar/inbound-health", params)
+
+
+@app.post("/inbound/test-window")
+def inbound_test_window(payload: Dict[str, Any] = Body(default={})):
+    req_timeout = TIMEOUT
+    if isinstance(payload, dict):
+        try:
+            req_timeout = max(TIMEOUT, float(payload.get("duration", 45)) + 10.0)
+        except Exception:
+            req_timeout = TIMEOUT
+    return _post("/api/allstar/inbound-test-window", payload, timeout=req_timeout)
 
 
 @app.get("/debug/ping")

@@ -1,37 +1,30 @@
 # Node-RED Service
 
-Purpose:
-- Workflow automation for SusNet modules.
-- Event routing, transforms, and operator tooling.
+## Purpose
+- V2 operator dashboard and automation workflows.
+- Gateway-only HTTP usage (`http://susnet-core-api:8080/api/...`).
 
-Data paths:
+## Paths
 - Runtime data: `/home/gabe0000/susnet-next/data/nodered`
-- Versioned starter flows: `/home/gabe0000/susnet-next/services/node-red/flows`
+- Versioned flow pack: `/home/gabe0000/susnet-next/services/node-red/flows/susnet_flows_v2.json`
 
-Default URL:
-- `http://<pi-ip>:1881`
-- Dashboard URL: `http://<pi-ip>:1881/ui/`
+## URLs
+- Editor: `http://<pi-ip>:1881`
+- Dashboard: `http://<pi-ip>:1881/ui/`
 
-Planned use:
-- Ticket workflow hooks
-- Cross-module event bus fanout
-- Setup wizard backend glue logic
+## Seed flow pack
+```bash
+/home/gabe0000/susnet-next/scripts/seed_nodered_flows.sh --direct \
+  /home/gabe0000/susnet-next/services/node-red/flows/susnet_flows_v2.json
+sudo docker restart susnet-next-nodered
+```
 
-Seeded flow pack (v2-only):
-- Main runtime tab in editor: `SusNet Runtime`
-- Dashboard pages:
-  - Home
-  - AllStar
-  - GMRSHub
-  - APRS
-  - Meshtastic
-  - Admin
-- Flow file (v2-only, gateway based):
-  - `/home/gabe0000/susnet-next/services/node-red/flows/susnet_flows_v2.json`
-- Runtime backup captured before v2 seed:
-  - `/home/gabe0000/susnet-next/data/nodered/flows.pre_v2.backup.json`
+## Current dashboard groups
+- Home
+- AllStar
+- GMRSHub
+- APRS
+- Meshtastic
+- Admin
 
-Flow seed script:
-- `/home/gabe0000/susnet-next/scripts/seed_nodered_flows.sh`
-- Supports optional argument:
-  - `./scripts/seed_nodered_flows.sh /path/to/custom_flows.json`
+Includes inbound readiness and manual test-window controls for AllStar/GMRSHub.

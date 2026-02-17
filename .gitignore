@@ -1,14 +1,21 @@
 # Security-sensitive local files
 .git-credentials
 .bash_history
+.susnet_basic_auth_credentials
+.ssh/
+.codex/
 
 # Local secrets/runtime data
 susnet-next/.secrets/
 susnet-next/data/
 susnet-next/ops/stacks/.env
+Troubleshooting/inbound_diag_state.json
 
 # Local build/export artifacts
 exports/
+backups/
+tmp-docs/
+susnet-private/
 __pycache__/
 *.pyc
 .cache/

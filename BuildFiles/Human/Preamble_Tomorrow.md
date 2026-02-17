@@ -1,18 +1,19 @@
-# Preamble for Tomorrow’s Work
+# Preamble for Next Session
 
-Tonight we stabilized SusNet v2. We now have:
-- A core gateway API (`susnet-core`) at `http://susnet.local:8090`
-- Dedicated module APIs (AllStar, GMRSHub, APRS, Meshtastic)
-- Node‑RED retargeted to the gateway (v2‑only)
-- Updated docs + backups + security cleanup
+Today we completed local-only inbound stabilization scaffolding without breaking live RF runtime.
 
-Tomorrow’s focus should be:
-1) Decide which module to port natively first (Meshtastic recommended).
-2) Decide gateway auth method (API key recommended).
-3) Plan dual ASL3 containers (AllStar + GMRSHub) using separate LAN IPs.
+## What is now in place
+- Host inbound diagnostics API for AllStar and GMRSHub.
+- V2 module and core gateway proxy routes for inbound health/test windows.
+- Node-RED V2 flow updates for inbound readiness visibility and manual test triggers.
+- Updated operator manuals, bootstrap guides, and troubleshooting master log.
+- NotesLM bootstrap journal and source package generation workflow.
 
-Start with quick checks:
-- `http://susnet.local:8090/api/health`
-- `http://susnet.local:1881/ui/`
+## First checks tomorrow
+1. `curl -sS http://susnet.local:8090/api/health`
+2. `curl -sS http://susnet.local:8090/api/allstar/inbound/health`
+3. `curl -sS http://susnet.local:8090/api/gmrshub/inbound/health`
+4. Open dashboard `http://susnet.local:1881/ui/` and verify new inbound sections.
 
-Then open Portainer and confirm stacks are running.
+## Priority next step
+Run a live external inbound attempt during a test window and capture classification evidence with timestamps.

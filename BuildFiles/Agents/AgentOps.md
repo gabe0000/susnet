@@ -1,23 +1,42 @@
 # Agent Ops Guide
 
-Quick-start and safeguards for coding agents working on SusNet. Default: local repo may hold code; GitHub remote is **docs-only**.
+## Operating posture
+- Local-only architecture; no cloud relay unless explicitly approved.
+- Containerize control-plane modules where possible.
+- Host Asterisk remains production until a dedicated migration cycle.
 
-## Daily checklist
-- Read context: current tasks, open tabs, and latest Journal entry.
-- `git status --short` per repo; do not disturb unrelated/untracked piles (venv, caches, personal files).
-- Validate changes lightly: `python -m py_compile <file>`, open HTML locally, avoid heavy/destructive commands by default.
-- If services must be refreshed, use `/home/gabe0000/restart_susnet.sh` (local only). Do not publish this script.
-- Keep queue/log files intact; never delete user data unless asked.
+## Mandatory guardrails
+- No destructive git reset/checkout operations.
+- No secrets in docs, commits, tickets, or exports.
+- No broad restarts for narrow changes.
+- Preserve user-created files and tuning unless explicitly instructed.
 
-## Channel/hash specifics (Meshtastic)
-- Channel selection is by **hash** (name + PSK), not slot number. Always resolve channel by name against the local channel table; avoid hard-coding indexes.
-- If names are missing, fetch channels via `node.requestChannels()`/`waitForConfig` before mapping name → index.
+## Inbound stabilization runbook
+1. Backup + baseline capture.
+2. Apply minimal host config edits (if required) with rollback artifact.
+3. Wire diagnostics endpoints:
+   - host API -> module APIs -> core gateway
+4. Update Node-RED dashboard controls and status blocks.
+5. Validate classification and timestamps.
 
-## Doc-only publishing rules
-- GitHub remote (`origin` → https://github.com/gabe0000/susnet) is documentation-only. Do not push code, logs, binaries, venvs, or secrets there.
-- Before pushing docs: stage only doc files; `git status --short` must show only docs staged/committed.
-- Keep local commits for code as needed; only push docs upstream.
+## Validation command set
+```bash
+curl -sS http://127.0.0.1:8088/api/allstar/inbound-health
+curl -sS http://127.0.0.1:8090/api/allstar/inbound/health
+curl -sS -X POST -H 'content-type: application/json' -d '{"duration":45}' \
+  http://127.0.0.1:8090/api/gmrshub/inbound/test-window
+sudo asterisk -rx 'iax2 show registry'
+```
 
-## When stuck
-- Log what you tried, what failed, and suggested next steps in Journal and/or BuildFiles.
-- Ask before destructive actions; never wipe or reset user changes.
+## Service reload matrix
+- host API changed: `systemctl restart susnet-api`
+- module/core code changed: restart only affected containers
+- Node-RED flow changed: seed flow file then restart Node-RED container
+
+## Documentation policy
+Every non-trivial change must update:
+- technical docs (`susnet-next/docs/*`)
+- operator docs (`BuildFiles/Human/*`)
+- process docs (`BuildFiles/Agents/*`)
+- session journals (`Journal/*`)
+- troubleshooting status (`Troubleshooting/*`)

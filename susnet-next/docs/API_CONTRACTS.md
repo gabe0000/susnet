@@ -1,60 +1,59 @@
-# SusNet V2 API Contracts (Draft)
+# SusNet V2 API Contracts
 
-## Common module response envelope
+## Common module envelope
 ```json
 { "ok": true, "data": { ... }, "errors": [] }
 ```
 
-## Module APIs (internal)
+## Core gateway principles
+- UI and Node-RED consume only `/api/*` routes from `core-api`.
+- Module internals remain behind gateway boundaries.
 
-### AllStar API (`module-allstar`)
-- `GET /health`
-- `GET /status`
-- `GET /nodes`
-- `GET /extnodes?node=<id>&limit=<n>`
-- `POST /refresh-extnodes`
+## AllStar / GMRSHub diagnostics contract
 
-### GMRSHub API (`module-gmrshub`)
-- `GET /health`
-- `GET /status`
-- `GET /nodes`
-- `GET /extnodes?node=<id>&limit=<n>`
-- `POST /refresh-extnodes`
+### Endpoints
+- `GET /api/allstar/inbound/health`
+- `POST /api/allstar/inbound/test-window`
+- `GET /api/gmrshub/inbound/health`
+- `POST /api/gmrshub/inbound/test-window`
 
-### APRS API (`module-aprs`)
-- `GET /health`
-- `GET /config`
-- `GET /messages`
-- `POST /send`
-- `POST /config`
+### `GET .../inbound/health` response
+```json
+{
+  "ok": true,
+  "registered": true,
+  "registry_rows": [],
+  "perceived_endpoint": "x.x.x.x:port",
+  "public_ip": "x.x.x.x",
+  "udp_4569_listening": true,
+  "extnodes_file": "/var/lib/asterisk/rpt_extnodes_gmrs",
+  "extnodes_mtime": "ISO-8601",
+  "classification": "L2 Router NAT/forward mismatch",
+  "last_inbound_packet_ts": "ISO-8601|null"
+}
+```
 
-### Meshtastic API (`module-meshtastic`)
-- `GET /health`
-- `GET /messages`
-- `GET /telemetry`
-- `POST /send`
+### `POST .../inbound/test-window` request
+```json
+{ "duration": 45 }
+```
 
-## Core API Gateway (external)
+### `POST .../inbound/test-window` response
+```json
+{
+  "ok": true,
+  "duration": 45,
+  "packet_count": 0,
+  "last_inbound_packet_ts": null,
+  "stderr": ""
+}
+```
 
-- `GET /api/health`
-- `GET /api/services` (proxy to v1 services for now)
-- `GET /api/tickets` (proxy to v1 tickets for now)
-- `GET /api/allstar/nodes`
-- `GET /api/allstar/extnodes?node=<id>&limit=<n>`
-- `POST /api/allstar/refresh-extnodes`
-- `GET /api/gmrshub/nodes`
-- `GET /api/gmrshub/extnodes?node=<id>&limit=<n>`
-- `POST /api/gmrshub/refresh-extnodes`
-- `GET /api/aprs/config`
-- `GET /api/aprs/messages`
-- `POST /api/aprs/send`
-- `GET /api/meshtastic/messages`
-- `GET /api/meshtastic/telemetry`
-- `POST /api/meshtastic/send`
+## Existing gateway endpoints retained
+- All previous `/api/allstar/*`, `/api/gmrshub/*`, `/api/aprs/*`, `/api/meshtastic/*` routes remain active.
 
-### Gateway response shape
-Gateway responses are v1-compatible where practical to reduce UI churn.
-
-- `GET /api/allstar/nodes` returns `{ok, nodes:[...]}`
-- `GET /api/allstar/extnodes` returns `{ok, entries:[...], count}`
-- Other endpoints pass through the underlying v1 data, wrapped in `ok`.
+## Meshtastic naming contract
+- node-bearing payloads should include:
+  - `shortName`
+  - `longName`
+  - `displayName` (`shortName>longName`)

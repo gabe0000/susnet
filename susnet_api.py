@@ -6,6 +6,7 @@ import json
 import math
 import os
 import re
+import shutil
 import socket
 import subprocess
 import time
@@ -52,14 +53,56 @@ MESHTASTIC_MY_ID = MESHTASTIC_BASE / "my_id.txt"
 MESHTASTIC_SERIAL_LINK = "/dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_0001-if00-port0"
 TTS_NODE = os.getenv("SUSNET_TTS_NODE", "66190")
 MESHTASTIC_CHANNELS: List[Dict[str, Any]] = []
+CHANNEL_CACHE = Path("/var/lib/susnet/meshtastic_channels.json")
 
+
+
+def _load_channel_cache():
+    try:
+        if CHANNEL_CACHE.exists():
+            data = json.loads(CHANNEL_CACHE.read_text())
+            if isinstance(data, list):
+                return data
+    except Exception:
+        return []
+    return []
+
+def _save_channel_cache(details, channels):
+    try:
+        payload = details or [{"index": idx, "name": name} for idx, name in enumerate(channels or [])]
+        if payload:
+            CHANNEL_CACHE.parent.mkdir(parents=True, exist_ok=True)
+            CHANNEL_CACHE.write_text(json.dumps(payload))
+    except Exception:
+        pass
+
+
+
+def _derive_channels_from_lines(lines: List[str]) -> Dict[int, str]:
+    """
+    Extract channel index/name pairs from log lines like `[Primary (#0)] ...`
+    """
+    out: Dict[int, str] = {}
+    pat = re.compile(r"\[(.+?) \(#(\d+)\)\]")
+    for ln in lines:
+        for name, idx in pat.findall(ln):
+            try:
+                num = int(idx)
+            except Exception:
+                continue
+            if name and num not in out:
+                out[num] = name.strip()
+    return out
 TROUBLE_ROOT = Path("/home/gabe0000/Troubleshooting")
 TROUBLE_OPEN = TROUBLE_ROOT / "open"
 TROUBLE_CLOSED = TROUBLE_ROOT / "closed"
 TROUBLE_MASTER = TROUBLE_ROOT / "master.md"
+INBOUND_DIAG_STATE = TROUBLE_ROOT / "inbound_diag_state.json"
 
 MODE_SWITCHER_URL = "http://127.0.0.1:3000"
 MODE_ALIAS_FILE = Path("/opt/dvswitch_mode_switcher/configs/tg_alias.yml")
+GMRS_EXTNODES_FILE = Path("/var/lib/asterisk/rpt_extnodes_gmrs")
+GMRS_EXTNODES_UPDATER = "/usr/local/sbin/update_gmrs_extnodes.sh"
 
 APRS_CALLSIGN = "W4VDX-10"
 APRS_ENV_FILE = Path("/etc/default/aprs-listener")
@@ -82,6 +125,11 @@ class LinkRequest(BaseModel):
 
 class LocalRequest(BaseModel):
     localNode: int = Field(..., ge=1)
+
+
+class InboundTestWindowRequest(BaseModel):
+    duration: int = Field(45, ge=5, le=180)
+    node: Optional[str] = None
 
 
 class FavoriteRequest(BaseModel):
@@ -173,6 +221,232 @@ def _run(cmd: List[str]) -> str:
 
 def _run_asterisk(command: str) -> str:
     return _run([AST_BIN, "-rx", command])
+
+
+def _run_capture(cmd: List[str], timeout: Optional[int] = None) -> Dict[str, Any]:
+    try:
+        res = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            check=False,
+        )
+        return {"ok": True, "rc": res.returncode, "stdout": res.stdout.strip(), "stderr": res.stderr.strip()}
+    except Exception as exc:
+        return {"ok": False, "rc": 255, "stdout": "", "stderr": str(exc)}
+
+
+def _file_meta(path: Path) -> Dict[str, Any]:
+    if not path.exists():
+        return {"exists": False, "size": 0, "mtime": None}
+    st = path.stat()
+    return {"exists": True, "size": st.st_size, "mtime": st.st_mtime}
+
+
+def _epoch_to_iso(value: Any) -> Optional[str]:
+    try:
+        return datetime.utcfromtimestamp(float(value)).isoformat() + "Z"
+    except Exception:
+        return None
+
+
+def _now_iso() -> str:
+    return datetime.utcnow().isoformat() + "Z"
+
+
+def _load_inbound_diag_state() -> Dict[str, Any]:
+    try:
+        if INBOUND_DIAG_STATE.exists():
+            return json.loads(INBOUND_DIAG_STATE.read_text())
+    except Exception:
+        pass
+    return {}
+
+
+def _save_inbound_diag_state(state: Dict[str, Any]) -> None:
+    try:
+        INBOUND_DIAG_STATE.parent.mkdir(parents=True, exist_ok=True)
+        INBOUND_DIAG_STATE.write_text(json.dumps(state, indent=2))
+    except Exception:
+        # Diagnostics are read-only helpers and must not disrupt control plane behavior.
+        pass
+
+
+def _fetch_public_ip() -> Optional[str]:
+    for url in ("https://api.ipify.org", "https://ifconfig.me/ip"):
+        try:
+            value = requests.get(url, timeout=4).text.strip()
+            if re.match(r"^\d{1,3}(?:\.\d{1,3}){3}$", value):
+                return value
+        except Exception:
+            continue
+    return None
+
+
+def _parse_registry_rows(raw: str) -> List[Dict[str, Any]]:
+    rows: List[Dict[str, Any]] = []
+    # Example row:
+    # 66.135.20.206:4569  Y  531121  166.137.99.34:56617  60  Registered
+    pattern = re.compile(
+        r"^(?P<host>\S+)\s+\S+\s+(?P<username>\S+)\s+(?P<perceived>\S+)\s+(?P<refresh>\d+)\s+(?P<state>\S+)\s*$"
+    )
+    for line in raw.splitlines():
+        line = line.strip()
+        if not line or line.startswith("Host ") or line.endswith("IAX2 registrations."):
+            continue
+        match = pattern.match(line)
+        if not match:
+            continue
+        rows.append(
+            {
+                "host": match.group("host"),
+                "username": match.group("username"),
+                "perceived": match.group("perceived"),
+                "refresh": int(match.group("refresh")),
+                "state": match.group("state"),
+            }
+        )
+    return rows
+
+
+def _udp_4569_listening() -> bool:
+    result = _run_capture(["/usr/bin/ss", "-lun"])
+    if not result.get("ok"):
+        return False
+    return any(":4569" in line for line in result.get("stdout", "").splitlines())
+
+
+def _classification_from_signals(
+    *,
+    registered: bool,
+    udp_4569_listening: bool,
+    last_inbound_packet_ts: Optional[str],
+) -> str:
+    if not udp_4569_listening:
+        return "L3 Host firewall/socket issue"
+    if not registered:
+        return "L4 Asterisk auth/context/codec reject"
+    if last_inbound_packet_ts:
+        return "healthy/public-reachable"
+    return "L2 Router NAT/forward mismatch"
+
+
+def _inbound_health_for(subsystem: str, default_node: str, extnodes_file: Path) -> Dict[str, Any]:
+    reg_raw = _run_capture([AST_BIN, "-rx", "iax2 show registry"])
+    registry_rows = _parse_registry_rows(reg_raw.get("stdout", ""))
+    row = next((r for r in registry_rows if r.get("username") == str(default_node)), None)
+    registered = bool(row and str(row.get("state", "")).lower() == "registered")
+    perceived = row.get("perceived") if row else None
+
+    state = _load_inbound_diag_state()
+    subsystem_state = state.get(subsystem, {}) if isinstance(state, dict) else {}
+    last_inbound_packet_ts = subsystem_state.get("last_inbound_packet_ts")
+
+    udp_listening = _udp_4569_listening()
+    ext_meta = _file_meta(extnodes_file)
+    mtime_iso = _epoch_to_iso(ext_meta.get("mtime"))
+
+    return {
+        "ok": True,
+        "registered": registered,
+        "registry_rows": registry_rows,
+        "perceived_endpoint": perceived,
+        "public_ip": _fetch_public_ip(),
+        "udp_4569_listening": udp_listening,
+        "extnodes_file": str(extnodes_file),
+        "extnodes_mtime": mtime_iso,
+        "classification": _classification_from_signals(
+            registered=registered,
+            udp_4569_listening=udp_listening,
+            last_inbound_packet_ts=last_inbound_packet_ts,
+        ),
+        "last_inbound_packet_ts": last_inbound_packet_ts,
+    }
+
+
+def _run_inbound_window(subsystem: str, duration: int) -> Dict[str, Any]:
+    capped = max(5, min(int(duration), 180))
+    tcpdump_bin = shutil.which("tcpdump")
+    if not tcpdump_bin:
+        state = _load_inbound_diag_state()
+        if not isinstance(state, dict):
+            state = {}
+        state[subsystem] = {
+            "last_test_window": _now_iso(),
+            "duration": capped,
+            "packet_count": 0,
+            "last_inbound_packet_ts": None,
+            "stderr": "tcpdump not installed",
+        }
+        _save_inbound_diag_state(state)
+        return {
+            "ok": False,
+            "duration": capped,
+            "packet_count": 0,
+            "last_inbound_packet_ts": None,
+            "stderr": "tcpdump not installed",
+        }
+
+    # Prefer concrete interfaces first; some kernels reject AF_PACKET on "any".
+    iface_candidates = ["wlan0", "eth0", "any"]
+
+    result: Dict[str, Any] = {"ok": False, "rc": 255, "stdout": "", "stderr": "capture not attempted"}
+    used_iface = None
+    for iface in iface_candidates:
+        cmd = [
+            "/usr/bin/timeout",
+            str(capped),
+            tcpdump_bin,
+            "-nn",
+            "-l",
+            "-i",
+            iface,
+            "udp",
+            "port",
+            "4569",
+            "-c",
+            "40",
+            "-tt",
+        ]
+        candidate = _run_capture(cmd, timeout=capped + 8)
+        used_iface = iface
+        if candidate.get("rc", 1) not in (0, 124) and "Address family not supported" in (candidate.get("stderr") or ""):
+            result = candidate
+            continue
+        result = candidate
+        break
+    packet_lines = []
+    if result.get("stdout"):
+        packet_lines = [ln for ln in result["stdout"].splitlines() if " IP " in ln or " IP6 " in ln]
+
+    last_ts_iso: Optional[str] = None
+    if packet_lines:
+        ts_token = packet_lines[-1].split(" ", 1)[0].strip()
+        try:
+            last_ts_iso = _epoch_to_iso(float(ts_token))
+        except Exception:
+            last_ts_iso = _now_iso()
+
+    state = _load_inbound_diag_state()
+    if not isinstance(state, dict):
+        state = {}
+    state[subsystem] = {
+        "last_test_window": _now_iso(),
+        "duration": capped,
+        "packet_count": len(packet_lines),
+        "last_inbound_packet_ts": last_ts_iso,
+        "stderr": result.get("stderr", ""),
+    }
+    _save_inbound_diag_state(state)
+    return {
+        "ok": bool(result.get("ok", False) and result.get("rc", 1) in (0, 124)),
+        "duration": capped,
+        "interface": used_iface,
+        "packet_count": len(packet_lines),
+        "last_inbound_packet_ts": last_ts_iso,
+        "stderr": result.get("stderr", ""),
+    }
 
 
 def _run_meshtastic(args: List[str]) -> Optional[str]:
@@ -605,6 +879,21 @@ def _tail_lines(path: Path, limit: int = 50) -> List[str]:
     return lines[-limit:]
 
 
+
+
+def _is_generic_channels(ch_list) -> bool:
+    if not ch_list:
+        return True
+    generic = {'primary','secondary',''}
+    names=[]
+    for c in ch_list:
+        name = ''
+        if isinstance(c, dict):
+            name = str(c.get('name','')).strip().lower()
+        else:
+            name = str(c).strip().lower()
+        names.append(name)
+    return all(n in generic for n in names)
 def _mesh_name_lookup() -> Dict[str, str]:
     """
     Build a map of node_id -> human name from any available source:
@@ -917,6 +1206,64 @@ def _parse_aprs_line(line: str) -> Dict[str, Any]:
 def nodes():
     return {"ok": True, "nodes": _load_nodes()}
 
+@app.post("/api/allstar/refresh-gmrs-list")
+def refresh_gmrs_list():
+    before = _file_meta(GMRS_EXTNODES_FILE)
+    output = ""
+    if Path(GMRS_EXTNODES_UPDATER).exists():
+        output = _run(["/usr/bin/env", "bash", GMRS_EXTNODES_UPDATER])
+    else:
+        output = _run(["/usr/bin/curl", "-fsSL", "http://66.135.20.206/nodes/nodes.pl", "-o", "/tmp/rpt_extnodes_gmrs.new"])
+        _run(["/bin/mv", "/tmp/rpt_extnodes_gmrs.new", str(GMRS_EXTNODES_FILE)])
+        _run(["/bin/chown", "asterisk:asterisk", str(GMRS_EXTNODES_FILE)])
+        _run(["/bin/chmod", "644", str(GMRS_EXTNODES_FILE)])
+        _run(["/usr/sbin/asterisk", "-rx", "module reload app_rpt.so"])
+    after = _file_meta(GMRS_EXTNODES_FILE)
+    changed = before.get("mtime") != after.get("mtime") or before.get("size") != after.get("size")
+    return {"ok": True, "changed": changed, "before": before, "after": after, "output": output}
+
+@app.get("/api/allstar/gmrs-extnodes")
+def gmrs_extnodes(node: Optional[str] = None, limit: int = 300):
+    entries: List[Dict[str, str]] = []
+    if GMRS_EXTNODES_FILE.exists():
+        for ln in GMRS_EXTNODES_FILE.read_text(errors="ignore").splitlines():
+            line = ln.strip()
+            if not line or line.startswith(";") or line.startswith("[") or "=" not in line:
+                continue
+            nid, data = line.split("=", 1)
+            nid = nid.strip()
+            data = data.strip()
+            if not nid.isdigit():
+                continue
+            if node and nid != str(node).strip():
+                continue
+            entries.append({"node": nid, "data": data})
+            if not node and len(entries) >= max(1, min(limit, 2000)):
+                break
+    return {"ok": True, "count": len(entries), "entries": entries}
+
+
+@app.get("/api/allstar/inbound-health")
+def allstar_inbound_health(node: Optional[str] = None):
+    target = str(node or "66190")
+    return _inbound_health_for("allstar", target, Path("/var/lib/asterisk/rpt_extnodes"))
+
+
+@app.get("/api/gmrshub/inbound-health")
+def gmrshub_inbound_health(node: Optional[str] = None):
+    target = str(node or "531121")
+    return _inbound_health_for("gmrshub", target, GMRS_EXTNODES_FILE)
+
+
+@app.post("/api/allstar/inbound-test-window")
+def allstar_inbound_test_window(req: InboundTestWindowRequest):
+    return _run_inbound_window("allstar", req.duration)
+
+
+@app.post("/api/gmrshub/inbound-test-window")
+def gmrshub_inbound_test_window(req: InboundTestWindowRequest):
+    return _run_inbound_window("gmrshub", req.duration)
+
 
 @app.post("/api/connect")
 def connect(req: LinkRequest):
@@ -987,7 +1334,7 @@ async def ami_events():
             if payload:
                 yield f"data: {json.dumps(payload)}\n\n"
                 continue
-            await asyncio.sleep(0.05)
+            await asyncio.sleep(0.5)
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")
 
@@ -1117,18 +1464,43 @@ def meshtastic_messages():
         stripped = nid.lstrip("!")
         return name_map.get(nid) or name_map.get(stripped) or nid
     channel_map: Dict[int, str] = {}
+    chan_hint_re = re.compile(r"\[(?:([^\[\]]+?)\s*\(#(\d+)\)|(\d+))\]")
+    channels_source = MESHTASTIC_CHANNELS
+    if _is_generic_channels(channels_source):
+        channels_source = _load_channel_cache()
     try:
-        for entry in MESHTASTIC_CHANNELS:
+        for entry in channels_source:
             if isinstance(entry, dict) and entry.get("index") is not None:
                 idx = _safe_int(entry.get("index"))
                 if idx is not None and entry.get("name"):
                     channel_map[idx] = entry.get("name")
     except Exception:
         pass
+    if not channel_map:
+        try:
+            for entry in _load_channel_cache():
+                if isinstance(entry, dict) and entry.get("index") is not None:
+                    idx = _safe_int(entry.get("index"))
+                    if idx is not None and entry.get("name"):
+                        channel_map[idx] = entry.get("name")
+        except Exception:
+            pass
+    # derive channel names from log lines if we still have gaps
+    if not channel_map:
+        log_lines = _tail_lines(MESHTASTIC_MESSAGES, 400)
+        derived = _derive_channels_from_lines(log_lines)
+        if derived:
+            channel_map.update(derived)
+            try:
+                payload = [{"index": k, "name": v} for k, v in sorted(channel_map.items())]
+                _save_channel_cache(payload, [])
+            except Exception:
+                pass
     if MESHTASTIC_JSON.exists():
         try:
             data = json.loads(MESHTASTIC_JSON.read_text())
-            for entry in data[-500:]:
+            records = data if isinstance(data, list) else data.get("messages", [])
+            for entry in records[-500:]:
                 if not isinstance(entry, dict):
                     continue
                 ts = entry.get("timestamp")
@@ -1148,6 +1520,17 @@ def meshtastic_messages():
                             ch_idx = int(str(raw_channel).strip())
                     except Exception:
                         ch_idx = None
+                # if still missing, try to parse from text like "[2]" or "[Name (#4)]"
+                if ch_idx is None and text:
+                    m = chan_hint_re.search(text)
+                    if m:
+                        try:
+                            if m.group(2):
+                                ch_idx = int(m.group(2))
+                            elif m.group(3):
+                                ch_idx = int(m.group(3))
+                        except Exception:
+                            ch_idx = None
                 # map common labels to known indexes
                 if ch_idx is None and isinstance(raw_channel, str):
                     rc_low = raw_channel.lower()
@@ -1159,8 +1542,7 @@ def meshtastic_messages():
                 channel = None
                 if ch_idx is not None and ch_idx in channel_map:
                     channel = channel_map[ch_idx]
-                if not channel and raw_channel:
-                    # if raw_channel is numeric but not in channel_map, keep as string
+                if not channel and raw_channel is not None:
                     channel = str(raw_channel)
                 if not channel:
                     channel = channel_map.get(ch_idx, "Primary")
@@ -1180,17 +1562,28 @@ def meshtastic_messages():
                 })
         except Exception:
             items = []
+    lines = _tail_lines(MESHTASTIC_MESSAGES, 200)
     if not items:
         # Fallback: parse plain text log lines to preserve history across restarts
-        lines = _tail_lines(MESHTASTIC_MESSAGES, 200)
         for ln in lines:
             ts = None
+            ch_idx = None
             try:
                 ts_part = ln[:19]
                 ts = datetime.strptime(ts_part, "%Y-%m-%d %H:%M:%S").isoformat()
                 body = ln[20:].strip()
             except Exception:
                 body = ln.strip()
+            m = chan_hint_re.search(body)
+            if m:
+                try:
+                    if m.group(2):
+                        ch_idx = int(m.group(2))
+                    elif m.group(3):
+                        ch_idx = int(m.group(3))
+                except Exception:
+                    ch_idx = None
+            channel = channel_map.get(ch_idx, "")
             items.append({
                 "timestamp": ts,
                 "from": None,
@@ -1198,8 +1591,8 @@ def meshtastic_messages():
                 "to": None,
                 "to_name": "",
                 "text": body,
-                "channel": "",
-                "channelIndex": None,
+                "channel": channel,
+                "channelIndex": ch_idx,
                 "direct": False,
             })
     def _ts_key(msg: Dict[str, Any]) -> float:
@@ -1212,30 +1605,8 @@ def meshtastic_messages():
             except Exception:
                 return 0.0
         return 0.0
-    lines = _tail_lines(MESHTASTIC_MESSAGES, 200)
-    for ln in reversed(lines):
-        ts = None
-        body = ln.strip()
-        try:
-            ts_part = ln[:19]
-            ts = datetime.strptime(ts_part, "%Y-%m-%d %H:%M:%S").isoformat()
-            body = ln[20:].strip()
-        except Exception:
-            pass
-        items.append({
-            "timestamp": ts,
-            "from": None,
-            "from_name": "",
-            "to": None,
-            "to_name": "",
-            "text": body,
-            "channel": "",
-            "channelIndex": None,
-            "direct": False,
-        })
-    if items:
-        items = items[:200]
-        items.sort(key=_ts_key, reverse=True)
+    items = items[:200]
+    items.sort(key=_ts_key, reverse=True)
     return {"ok": True, "lines": lines[::-1], "items": items}
 
 
@@ -1293,6 +1664,14 @@ def meshtastic_topology():
     channel_details: List[Dict[str, Any]] = []
     activity = _collect_node_activity()
     favs = _get_favorites().get("mesh", {}).get("global", [])
+    # start with cached channels in case live query fails
+    cached = _load_channel_cache()
+    if cached:
+        try:
+            channel_details = cached
+            channels = [c.get("name") for c in cached if isinstance(c, dict) and c.get("name")]
+        except Exception:
+            pass
     fav_ids = {item.get("id") for item in favs if item.get("id")}
     raw_nodes = _run_meshtastic(["--nodes"])
     if raw_nodes:
@@ -1353,10 +1732,26 @@ def meshtastic_topology():
         raw_names = _extract_channel_names(raw_info)
         channel_details = _parse_channel_details(raw_info, raw_names)
         channels = [c.get("name") for c in channel_details if isinstance(c, dict) and c.get("name")] or raw_names
-    # cache channel list for name->index mapping on send
+    # If we still only have generic names, prefer cached or derived names
+    if _is_generic_channels(channel_details) or _is_generic_channels(channels):
+        cache = _load_channel_cache()
+        if cache:
+            try:
+                channel_details = cache
+                channels = [c.get("name") for c in cache if isinstance(c, dict) and c.get("name")]
+            except Exception:
+                pass
+        if _is_generic_channels(channel_details) or _is_generic_channels(channels):
+            derived = _derive_channels_from_lines(_tail_lines(MESHTASTIC_MESSAGES, 500))
+            if derived:
+                channel_details = [{"index": idx, "name": name} for idx, name in sorted(derived.items())]
+                channels = [c["name"] for c in channel_details]
+    # cache channel list for name->index mapping on send and UI
     try:
         global MESHTASTIC_CHANNELS
         MESHTASTIC_CHANNELS = channel_details or [{"index": idx, "name": name} for idx, name in enumerate(channels)]
+        if not _is_generic_channels(MESHTASTIC_CHANNELS):
+            _save_channel_cache(channel_details, channels)
     except Exception:
         pass
     return {"ok": True, "nodes": nodes, "channels": channels, "channel_details": channel_details}

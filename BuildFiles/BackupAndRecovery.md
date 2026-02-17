@@ -1,106 +1,46 @@
-# Backup and Recovery (Simple Guide)
+# Backup and Recovery
 
-This is a plain‑English guide to back up SusNet and restore it if something goes wrong.
-
-## What this covers
-- Making a safe backup of your important SusNet files.
-- How to copy that backup off the Pi.
-- How to restore from a backup.
-
-## Quick backup (safe default)
-This backup skips caches/venv/runtime data. It is good for configuration and rebuilds.
+## Before major network/voice changes
+Always create a timestamped rollback bundle:
 
 ```bash
 TS=$(date +%Y%m%d-%H%M%S)
-BACK=/home/gabe0000/backups/susnet-full-${TS}.tgz
-sudo tar -czf "$BACK" \
-  --exclude='/home/gabe0000/**/venv' \
-  --exclude='/home/gabe0000/.cache' \
-  --exclude='/home/gabe0000/.codex' \
-  --exclude='/home/gabe0000/.vscode-server' \
-  --exclude='/home/gabe0000/**/__pycache__' \
-  --exclude='/home/gabe0000/susnet-next/data' \
-  /home/gabe0000/susnet-next \
-  /home/gabe0000/BuildFiles \
-  /home/gabe0000/Journal \
-  /home/gabe0000/meshtastic \
-  /home/gabe0000/aprs \
-  /home/gabe0000/private-ui \
-  /home/gabe0000/susnet_api.py \
+sudo tar -czf /home/gabe0000/backups/susnet-prechange-${TS}.tgz \
   /etc/asterisk \
-  /var/lib/asterisk \
-  /var/lib/susnet \
-  /opt/susnet-api
-
-ls -lah "$BACK"
+  /var/lib/asterisk/rpt_extnodes \
+  /var/lib/asterisk/rpt_extnodes_gmrs \
+  /opt/susnet-api \
+  /home/gabe0000/susnet-next
 ```
 
-## Full backup (includes live data)
-Only do this if you need full state recovery (DBs, runtime data). The file will be bigger.
+## Inbound hardening snapshot used in this cycle
+- `/home/gabe0000/backups/susnet-pre-inbound-hardening-<timestamp>.tgz`
+- `/home/gabe0000/backups/inbound-hardening-<timestamp>/`
 
+## Baseline collection script
 ```bash
-TS=$(date +%Y%m%d-%H%M%S)
-BACK=/home/gabe0000/backups/susnet-full-with-data-${TS}.tgz
-sudo tar -czf "$BACK" \
-  --exclude='/home/gabe0000/**/venv' \
-  --exclude='/home/gabe0000/.cache' \
-  --exclude='/home/gabe0000/.codex' \
-  --exclude='/home/gabe0000/.vscode-server' \
-  --exclude='/home/gabe0000/**/__pycache__' \
-  /home/gabe0000/susnet-next \
-  /home/gabe0000/BuildFiles \
-  /home/gabe0000/Journal \
-  /home/gabe0000/meshtastic \
-  /home/gabe0000/aprs \
-  /home/gabe0000/private-ui \
-  /home/gabe0000/susnet_api.py \
-  /etc/asterisk \
-  /var/lib/asterisk \
-  /var/lib/susnet \
-  /opt/susnet-api
-
-ls -lah "$BACK"
+/home/gabe0000/susnet-next/scripts/collect_inbound_baseline.sh
 ```
 
-## Copy backup to your Mac
-Run this on your Mac terminal (not inside SSH):
+## Restore steps
+1. Place backup file on Pi.
+2. Restore to root:
 
 ```bash
-scp gabe0000@susnet.local:/home/gabe0000/backups/susnet-full-YYYYMMDD-HHMMSS.tgz ~/Downloads/
+sudo tar -xzf /home/gabe0000/backups/<backup>.tgz -C /
 ```
 
-If `susnet.local` doesn’t work, use the Pi IP.
-
-## Restore (basic)
-1. Copy the backup file back to the Pi.
-2. Extract it to root:
+3. Restart affected services:
 
 ```bash
-sudo tar -xzf /home/gabe0000/backups/your-backup-file.tgz -C /
-```
-
-3. Restart services if needed:
-
-```bash
-sudo systemctl restart susnet-api
-sudo systemctl restart meshtastic-listener
-sudo systemctl restart aprs-listener
 sudo systemctl restart asterisk
+sudo systemctl restart susnet-api
+sudo docker restart susnet-module-allstar susnet-module-gmrshub susnet-core-api susnet-next-nodered
 ```
 
-4. If using containers, restart stacks via Portainer or:
+4. Validate:
 
 ```bash
-sudo docker-compose -f /home/gabe0000/susnet-next/ops/stacks/susnet-admin.compose.yml up -d
-sudo docker-compose -f /home/gabe0000/susnet-next/ops/stacks/susnet-core.compose.yml up -d
-sudo docker-compose -f /home/gabe0000/susnet-next/ops/stacks/susnet-chirpstack.compose.yml up -d
+curl -sS http://127.0.0.1:8088/api/health
+curl -sS http://127.0.0.1:8090/api/health
 ```
-
-## Common recovery mistakes
-- Restoring into `/home/gabe0000` only instead of `/` (wrong paths).
-- Forgetting to restart services after restore.
-- Overwriting newer config files without a second copy.
-
-## Notes
-- Keep backups off the Pi (USB drive or your laptop).
-- Do not store credentials in GitHub.

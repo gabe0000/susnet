@@ -1,24 +1,50 @@
-# GMRS/ASL Dual Extnodes (531121)
+# GMRS Extnodes Workflow (531121)
 
-Purpose: keep AllStarLink nodes on the stock list while 531121 uses the GMRS directory feed, all on the same Pi.
+## Purpose
+Maintain separate extnodes data sources on one Pi:
+- ASL stock: `/var/lib/asterisk/rpt_extnodes`
+- GMRS override: `/var/lib/asterisk/rpt_extnodes_gmrs`
 
-## How it works
-- Global extnode file: `/var/lib/asterisk/rpt_extnodes` (ASL/stock). Set in `[general]` of `/etc/asterisk/rpt.conf`.
-- 531121 override: in its node stanza use the GMRS list:  
-  `extnodefile=/var/lib/asterisk/rpt_extnodes_gmrs`
-- Update job (root crontab): runs every 15 minutes to fetch GMRS extnodes. Command:  
-  `curl -fsSL http://66.135.20.206/nodes/nodes.pl -o /tmp/rpt_extnodes_gmrs.new && [ -s /tmp/rpt_extnodes_gmrs.new ] && mv /tmp/rpt_extnodes_gmrs.new /var/lib/asterisk/rpt_extnodes_gmrs && chown asterisk:asterisk /var/lib/asterisk/rpt_extnodes_gmrs && chmod 644 /var/lib/asterisk/rpt_extnodes_gmrs && asterisk -rx 'module reload app_rpt.so' >/dev/null 2>&1`
-- Ownership/permissions: `asterisk:asterisk`, `0644`.
+## Runtime source of truth
+Root cron has one updater entry:
 
-## Recovery steps
-1) Ensure `/etc/asterisk/rpt.conf` has:
-   - `[general] extnodefile=/var/lib/asterisk/rpt_extnodes`
-   - In `[531121](node-main)`: `extnodefile=/var/lib/asterisk/rpt_extnodes_gmrs`
-2) Confirm the GMRS file exists and has entries like `531000=...` at `/var/lib/asterisk/rpt_extnodes_gmrs`.
-3) If missing, rerun the cron command once manually (as root), or let cron repopulate within 15 minutes.
-4) Reload app_rpt: `asterisk -rx 'module reload app_rpt.so'`.
+```cron
+*/15 * * * * /usr/local/sbin/update_gmrs_extnodes.sh
+```
 
-## Notes
-- Do **not** merge the lists; keep ASL and GMRS separate to avoid clobbering.
-- If the GMRS URL changes, update the cron job and re-run once.
-- Backups live in `/var/asl-backups/`; the 2025-10-06 set contains the known-good rpt.conf with the per-node extnodefile override.
+Script path:
+- `/usr/local/sbin/update_gmrs_extnodes.sh`
+
+Current behavior:
+- download `http://66.135.20.206/nodes/nodes.pl`
+- compare with existing file
+- replace only when changed
+- set owner/group `asterisk:asterisk`
+- set mode `0644`
+- reload `app_rpt` only when changed
+
+## Manual refresh methods
+### API method (preferred)
+```bash
+curl -sS -X POST http://127.0.0.1:8088/api/allstar/refresh-gmrs-list
+```
+
+### Dashboard method
+- Node-RED dashboard -> GMRSHub -> `Refresh GMRS List`
+
+### Script method
+```bash
+sudo /usr/local/sbin/update_gmrs_extnodes.sh
+```
+
+## Validation
+```bash
+ls -l /var/lib/asterisk/rpt_extnodes_gmrs
+head -n 20 /var/lib/asterisk/rpt_extnodes_gmrs
+sudo asterisk -rx 'module reload app_rpt.so'
+```
+
+## Failure patterns
+- stale file mtime -> cron not running
+- wrong owner/perms -> app_rpt read issues
+- duplicate cron entries -> unnecessary churn/reloads

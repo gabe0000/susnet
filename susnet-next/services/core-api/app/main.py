@@ -28,9 +28,14 @@ def _safe_json(resp: httpx.Response) -> Any:
         return {"raw": resp.text}
 
 
-def _get(url: str, path: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+def _get(
+    url: str,
+    path: str,
+    params: Optional[Dict[str, Any]] = None,
+    timeout: Optional[float] = None,
+) -> Dict[str, Any]:
     try:
-        resp = httpx.get(f"{url}{path}", params=params, timeout=TIMEOUT)
+        resp = httpx.get(f"{url}{path}", params=params, timeout=timeout or TIMEOUT)
     except Exception as exc:
         return {"ok": False, "errors": [str(exc)], "data": None}
     if resp.status_code >= 400:
@@ -38,9 +43,14 @@ def _get(url: str, path: str, params: Optional[Dict[str, Any]] = None) -> Dict[s
     return _safe_json(resp)
 
 
-def _post(url: str, path: str, payload: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+def _post(
+    url: str,
+    path: str,
+    payload: Optional[Dict[str, Any]] = None,
+    timeout: Optional[float] = None,
+) -> Dict[str, Any]:
     try:
-        resp = httpx.post(f"{url}{path}", json=payload, timeout=TIMEOUT)
+        resp = httpx.post(f"{url}{path}", json=payload, timeout=timeout or TIMEOUT)
     except Exception as exc:
         return {"ok": False, "errors": [str(exc)], "data": None}
     if resp.status_code >= 400:
@@ -113,6 +123,27 @@ def allstar_refresh_extnodes():
     return _unwrap_or_error(resp)
 
 
+@app.get("/api/allstar/inbound/health")
+def allstar_inbound_health(node: Optional[str] = Query(None)):
+    params: Dict[str, Any] = {}
+    if node:
+        params["node"] = str(node)
+    resp = _get(ALLSTAR_API_URL, "/inbound/health", params)
+    return _unwrap_or_error(resp)
+
+
+@app.post("/api/allstar/inbound/test-window")
+def allstar_inbound_test_window(payload: Dict[str, Any] = Body(default={})):
+    req_timeout = TIMEOUT
+    if isinstance(payload, dict):
+        try:
+            req_timeout = max(TIMEOUT, float(payload.get("duration", 45)) + 15.0)
+        except Exception:
+            req_timeout = TIMEOUT
+    resp = _post(ALLSTAR_API_URL, "/inbound/test-window", payload, timeout=req_timeout)
+    return _unwrap_or_error(resp)
+
+
 # GMRSHub
 @app.get("/api/gmrshub/nodes")
 def gmrshub_nodes():
@@ -132,6 +163,27 @@ def gmrshub_extnodes(node: str = Query(...), limit: int = Query(20)):
 @app.post("/api/gmrshub/refresh-extnodes")
 def gmrshub_refresh_extnodes():
     resp = _post(GMRS_API_URL, "/refresh-extnodes", {})
+    return _unwrap_or_error(resp)
+
+
+@app.get("/api/gmrshub/inbound/health")
+def gmrshub_inbound_health(node: Optional[str] = Query(None)):
+    params: Dict[str, Any] = {}
+    if node:
+        params["node"] = str(node)
+    resp = _get(GMRS_API_URL, "/inbound/health", params)
+    return _unwrap_or_error(resp)
+
+
+@app.post("/api/gmrshub/inbound/test-window")
+def gmrshub_inbound_test_window(payload: Dict[str, Any] = Body(default={})):
+    req_timeout = TIMEOUT
+    if isinstance(payload, dict):
+        try:
+            req_timeout = max(TIMEOUT, float(payload.get("duration", 45)) + 15.0)
+        except Exception:
+            req_timeout = TIMEOUT
+    resp = _post(GMRS_API_URL, "/inbound/test-window", payload, timeout=req_timeout)
     return _unwrap_or_error(resp)
 
 
@@ -170,6 +222,198 @@ def mesh_telemetry():
 @app.post("/api/meshtastic/send")
 def mesh_send(payload: Dict[str, Any] = Body(default={})):  # passthrough
     resp = _post(MESH_API_URL, "/send", payload)
+    return _unwrap_or_error(resp)
+
+
+@app.get("/api/meshtastic/commands")
+def mesh_commands():
+    resp = _get(MESH_API_URL, "/commands")
+    return _unwrap_or_error(resp)
+
+
+@app.post("/api/meshtastic/commands/{command_name}")
+def mesh_command(command_name: str, payload: Dict[str, Any] = Body(default={})):
+    # Meshtastic CLI-like commands can be long-running (e.g. traceroute/telemetry).
+    req_timeout = None
+    try:
+        if isinstance(payload, dict) and "timeout" in payload and payload["timeout"] is not None:
+            req_timeout = max(TIMEOUT, float(payload["timeout"]) + 10.0)
+    except Exception:
+        req_timeout = None
+    resp = _post(MESH_API_URL, f"/commands/{command_name}", payload, timeout=req_timeout)
+    return _unwrap_or_error(resp)
+
+
+@app.get("/api/meshtastic/info")
+def mesh_info():
+    resp = _get(MESH_API_URL, "/info")
+    return _unwrap_or_error(resp)
+
+
+@app.get("/api/meshtastic/nodes")
+def mesh_nodes(limit: int = Query(500, ge=1, le=2000)):
+    resp = _get(MESH_API_URL, "/nodes", {"limit": limit})
+    return _unwrap_or_error(resp)
+
+
+@app.get("/api/meshtastic/channels")
+def mesh_channels():
+    resp = _get(MESH_API_URL, "/channels")
+    return _unwrap_or_error(resp)
+
+
+@app.post("/api/meshtastic/sendtext")
+def mesh_sendtext(payload: Dict[str, Any] = Body(default={})):
+    resp = _post(MESH_API_URL, "/sendtext", payload)
+    return _unwrap_or_error(resp)
+
+
+@app.post("/api/meshtastic/request-telemetry")
+def mesh_request_telemetry(payload: Dict[str, Any] = Body(default={})):
+    resp = _post(MESH_API_URL, "/request-telemetry", payload)
+    return _unwrap_or_error(resp)
+
+
+@app.post("/api/meshtastic/request-position")
+def mesh_request_position(payload: Dict[str, Any] = Body(default={})):
+    resp = _post(MESH_API_URL, "/request-position", payload)
+    return _unwrap_or_error(resp)
+
+
+@app.post("/api/meshtastic/traceroute")
+def mesh_traceroute(payload: Dict[str, Any] = Body(default={})):
+    resp = _post(MESH_API_URL, "/traceroute", payload)
+    return _unwrap_or_error(resp)
+
+
+@app.get("/api/meshtastic/config/field")
+def mesh_config_field_get(
+    field: str = Query(...),
+    timeout: float = Query(25, ge=1, le=120),
+):
+    # Meshtastic config reads often shell out to the CLI behind the module (serial connect + RPC),
+    # so they need a longer gateway timeout than the global default.
+    resp = _get(MESH_API_URL, "/config/field", {"field": field}, timeout=max(TIMEOUT, timeout))
+    return _unwrap_or_error(resp)
+
+
+@app.post("/api/meshtastic/config/field")
+def mesh_config_field_set(payload: Dict[str, Any] = Body(default={})):
+    req_timeout = None
+    try:
+        if isinstance(payload, dict) and "timeout" in payload and payload["timeout"] is not None:
+            req_timeout = max(TIMEOUT, float(payload["timeout"]) + 10.0)
+    except Exception:
+        req_timeout = None
+    resp = _post(MESH_API_URL, "/config/field", payload, timeout=req_timeout)
+    return _unwrap_or_error(resp)
+
+
+@app.post("/api/meshtastic/channel/set")
+def mesh_channel_set(payload: Dict[str, Any] = Body(default={})):
+    req_timeout = None
+    try:
+        if isinstance(payload, dict) and "timeout" in payload and payload["timeout"] is not None:
+            req_timeout = max(TIMEOUT, float(payload["timeout"]) + 10.0)
+    except Exception:
+        req_timeout = None
+    resp = _post(MESH_API_URL, "/channel/set", payload, timeout=req_timeout)
+    return _unwrap_or_error(resp)
+
+
+@app.post("/api/meshtastic/channel/add")
+def mesh_channel_add(payload: Dict[str, Any] = Body(default={})):
+    req_timeout = None
+    try:
+        if isinstance(payload, dict) and "timeout" in payload and payload["timeout"] is not None:
+            req_timeout = max(TIMEOUT, float(payload["timeout"]) + 10.0)
+    except Exception:
+        req_timeout = None
+    resp = _post(MESH_API_URL, "/channel/add", payload, timeout=req_timeout)
+    return _unwrap_or_error(resp)
+
+
+@app.post("/api/meshtastic/channel/delete")
+def mesh_channel_delete(payload: Dict[str, Any] = Body(default={})):
+    req_timeout = None
+    try:
+        if isinstance(payload, dict) and "timeout" in payload and payload["timeout"] is not None:
+            req_timeout = max(TIMEOUT, float(payload["timeout"]) + 10.0)
+    except Exception:
+        req_timeout = None
+    resp = _post(MESH_API_URL, "/channel/delete", payload, timeout=req_timeout)
+    return _unwrap_or_error(resp)
+
+
+@app.get("/api/meshtastic/mqtt/status")
+def mesh_mqtt_status():
+    resp = _get(MESH_API_URL, "/mqtt/status")
+    return _unwrap_or_error(resp)
+
+
+@app.get("/api/meshtastic/mqtt/config")
+def mesh_mqtt_config_get():
+    resp = _get(MESH_API_URL, "/mqtt/config")
+    return _unwrap_or_error(resp)
+
+
+@app.post("/api/meshtastic/mqtt/config")
+def mesh_mqtt_config_set(payload: Dict[str, Any] = Body(default={})):
+    resp = _post(MESH_API_URL, "/mqtt/config", payload)
+    return _unwrap_or_error(resp)
+
+
+@app.get("/api/meshtastic/mqtt/topics")
+def mesh_mqtt_topics():
+    resp = _get(MESH_API_URL, "/mqtt/topics")
+    return _unwrap_or_error(resp)
+
+
+@app.post("/api/meshtastic/mqtt/connect")
+def mesh_mqtt_connect():
+    resp = _post(MESH_API_URL, "/mqtt/connect", {})
+    return _unwrap_or_error(resp)
+
+
+@app.post("/api/meshtastic/mqtt/disconnect")
+def mesh_mqtt_disconnect():
+    resp = _post(MESH_API_URL, "/mqtt/disconnect", {})
+    return _unwrap_or_error(resp)
+
+
+@app.post("/api/meshtastic/mqtt/publish-json")
+def mesh_mqtt_publish_json(payload: Dict[str, Any] = Body(default={})):
+    resp = _post(MESH_API_URL, "/mqtt/publish-json", payload)
+    return _unwrap_or_error(resp)
+
+
+@app.post("/api/meshtastic/mqtt/publish-protobuf")
+def mesh_mqtt_publish_protobuf(payload: Dict[str, Any] = Body(default={})):
+    resp = _post(MESH_API_URL, "/mqtt/publish-protobuf", payload)
+    return _unwrap_or_error(resp)
+
+
+@app.get("/api/meshtastic/mqtt/messages")
+def mesh_mqtt_messages(limit: int = Query(100, ge=1, le=500)):
+    resp = _get(MESH_API_URL, "/mqtt/messages", {"limit": limit})
+    return _unwrap_or_error(resp)
+
+
+@app.post("/api/meshtastic/mqtt/subscribe")
+def mesh_mqtt_subscribe(payload: Dict[str, Any] = Body(default={})):
+    resp = _post(MESH_API_URL, "/mqtt/subscribe", payload)
+    return _unwrap_or_error(resp)
+
+
+@app.post("/api/meshtastic/mqtt/unsubscribe")
+def mesh_mqtt_unsubscribe(payload: Dict[str, Any] = Body(default={})):
+    resp = _post(MESH_API_URL, "/mqtt/unsubscribe", payload)
+    return _unwrap_or_error(resp)
+
+
+@app.post("/api/meshtastic/mqtt/downlink/sendtext")
+def mesh_mqtt_downlink_sendtext(payload: Dict[str, Any] = Body(default={})):
+    resp = _post(MESH_API_URL, "/mqtt/downlink/sendtext", payload)
     return _unwrap_or_error(resp)
 
 

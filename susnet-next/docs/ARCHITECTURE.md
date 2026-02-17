@@ -1,58 +1,48 @@
-# SusNet Next Architecture (Draft)
+# SusNet Next Architecture
 
-## Design goal
-Run a parallel `v2` containerized platform while leaving `v1` untouched until cutover.
+## Design intent
+- Keep live RF stable on host.
+- Containerize control plane aggressively.
+- Isolate module APIs and keep UI/gateway dependency clean.
 
-## Module boundaries
-- `v1-legacy-adapter`: bridge and migration helpers from current host services.
-- `core-api`: unified API gateway and auth boundary.
-- `ui`: operator UI and setup workflows.
-- `bootstrap-api`: first-boot setup flow (`susnet.setup` AP onboarding).
-- `gmrs-updater`: controlled extnodes update and validation.
-- `aprs`: APRS ingest/send module (planned).
-- `meshtastic`: mesh ingest/send module (planned).
-- `voip`: Asterisk/ASL integration module (planned).
-- `node-red`: orchestration and automations.
-- `chirpstack`: LoRaWAN services.
-- `portainer`: operations control plane.
-- `support-bundle`: diagnostics capture and export.
+## Runtime split
+- Host production (RF-critical): Asterisk/app_rpt, iax, extnodes files.
+- Host service: V1 API (`susnet-api` on 8088) with direct Asterisk/system visibility.
+- Containers (V2): core gateway + module APIs + Node-RED + ChirpStack.
 
-## Runtime intent
-- Portainer manages SusNet Next as separate app stacks (one compose per app).
-- Node-RED provides cross-module event workflows.
-- Each protocol module reports through API contracts, not direct UI coupling.
-- UI and Node-RED call the Core API gateway only.
-
-## Current stack split
-- Bootstrap container:
-  - `susnet-next-portainer` (not self-managed inside a Portainer stack)
-- Stack: `susnet-admin`
+## Stack inventory
+- `susnet-admin`
   - `susnet-next-nodered`
-- Stack: `susnet-core`
+- `susnet-core`
   - `susnet-core-api`
   - `susnet-module-allstar`
   - `susnet-module-gmrshub`
   - `susnet-module-aprs`
+- `susnet-meshtastic`
   - `susnet-module-meshtastic`
-- Stack: `susnet-chirpstack`
+- `susnet-chirpstack`
   - `susnet-next-chirpstack`
   - `susnet-next-chirpstack-gw-bridge`
   - `susnet-next-mosquitto`
   - `susnet-next-postgres`
   - `susnet-next-redis`
 
-## Node-RED seeded flow pack (v2)
-- Editor runtime tab:
-  - SusNet Runtime
-- Dashboard pages:
-  - Home
-  - AllStar
-  - GMRSHub
-  - APRS
-  - Meshtastic
-  - Admin
+## Inbound diagnostics architecture
+- V1 host API implements low-level inbound checks:
+  - `iax2 show registry` parsing
+  - UDP 4569 listener check (`ss -lun`)
+  - extnodes metadata
+  - optional test-window packet capture (when tcpdump available)
+- V2 modules proxy V1 diagnostics.
+- V2 core exposes canonical endpoints for UI/Node-RED.
 
-## Cutover intent
-- Validate v2 in parallel.
-- Move one module at a time behind feature flags.
-- Preserve rollback path to v1.
+## Failure taxonomy
+- `L1 ISP/CGNAT blocked`
+- `L2 Router NAT/forward mismatch`
+- `L3 Host firewall/socket issue`
+- `L4 Asterisk auth/context/codec reject`
+
+## Safety model
+- No destructive auto-remediation in diagnostics endpoints.
+- classify + timestamp + operator action only.
+- Rollback bundles generated before host config edits.

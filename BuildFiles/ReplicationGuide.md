@@ -1,33 +1,41 @@
-# Replication Guide (Work in Progress)
+# Replication Guide
 
-Document everything needed to build "the box" from scratch. Expand each section as you validate the steps.
+## Goal
+Rebuild a functionally equivalent SusNet node with clear operator setup.
 
-## Hardware Checklist
-- Raspberry Pi 4B (voice) + microSD + UPS HAT.
-- Optional Raspberry Pi 3B (data) for APRS/Meshtastic workloads.
-- Two AURSINC USB radio/audio interfaces (or equivalent soundcard/PTT dongles).
-- AOIC interface board for K1-style radios (optional but boosts range).
-- HTs or mobiles for each RF role (voice vs. packet) plus antennas/duplexers.
-- Ethernet cable(s) for Pi-to-Pi linking; optional USB tethering cable.
+## High-level build order
+1. Base OS + networking
+2. Host Asterisk + ASL node config
+3. Host `susnet-api` (v1 adapter)
+4. V2 containers (`susnet-next` stacks)
+5. Dashboard + docs + backup automation
 
-## Base Imaging
-1. Flash AllStarLink ASL3 onto the Pi 4B SD card.
-2. Apply custom configuration (node 66190, GMRShub 531121, DVSwitch install).
-3. For the data Pi, start from Raspberry Pi OS Lite, then install Meshtastic CLI, Dire Wolf, MQTT client libraries.
+## Required service groups
+- Host RF engine:
+  - `asterisk`
+  - host IAX config + extnodes files
+- Host adapter:
+  - `susnet-api` on 8088
+- V2 stacks:
+  - admin, core, meshtastic, chirpstack
 
-## Software Stack Overview
-- **Voice Pi:** AllStar node services, GMRShub link scripts, DVSwitch, monitoring agents, DTMF command handler.
-- **Data Pi:** APRS listener/gateway, Meshtastic listener, MQTT broker/client, optional TTS service, web UI backend (if hosted here).
+## Required local paths
+- `/etc/asterisk`
+- `/var/lib/asterisk/rpt_extnodes*`
+- `/opt/susnet-api`
+- `/home/gabe0000/susnet-next`
+- `/home/gabe0000/BuildFiles`
+- `/home/gabe0000/Troubleshooting`
+- `/home/gabe0000/Journal`
 
-## Configuration Steps (To Do)
-- Wiring diagrams for AURSINC dongles + HTs, including tone settings.
-- Systemd service files for APRS listener, Meshtastic listener, MQTT bridge.
-- Security hardening (firewall, VPN, credential storage).
+## Inbound requirements for public IAX reachability
+- Static/DHCP-reserved LAN IP for Pi
+- UDP 4569 forwarded to Pi
+- No competing port-forward entries
+- SIP ALG/helper disabled
 
-## Validation Checklist
-- AllStar links connect outbound/inbound; DTMF commands respond.
-- APRS packets heard, parsed, and mirrored to logs/UI.
-- Meshtastic events ingested; MQTT queue shows traffic.
-- Browser UI reachable; fallback DTMF controls verified.
-
-Fill in missing sections as you replicate the build or help someone else do it.
+## Validation checklist
+- `iax2 show registry` registered states present
+- Gateway `/api/allstar/inbound/health` responds
+- GMRS extnodes refresh works and ownership remains `asterisk:asterisk`
+- Node-RED dashboard displays inbound readiness blocks
