@@ -53,3 +53,23 @@
 - Open Risks / Follow-ups:
   - Tune model timeout/latency tradeoff after live RF testing.
   - Optional future optimization: persistent local model endpoint with faster first-token behavior.
+
+
+## RP-20260222-004
+- Date/Time: 2026-02-22 19:52 EST
+- Context:
+  - Operator requested a simpler direct terminal interaction path than manual `mosquitto_pub/sub` flows.
+- Decision:
+  - Add a one-command CLI wrapper for Joe Cabot direct query and optional chat mode.
+- Implementation:
+  - Added runtime script: `/home/codex/joe-cabot-lite/ask_joe.py`.
+  - Added command aliases: `/usr/local/bin/ask-joe` and `/usr/local/bin/joe`.
+  - Configured defaults: broker `100.124.168.35`, timeout `25s`, retries `2`.
+- Failure(s) / Incident(s):
+  - Initial timeout at lower default timeout; solved by raising timeout and retrying.
+- Verification:
+  - `joe "traffic load summary please"` returned live summary.
+  - `joe "who are you"` returned conversational response.
+  - `joe "status"` returned online snapshot.
+- Open Risks / Follow-ups:
+  - If model latency rises, tune `--timeout` upward for direct CLI sessions.

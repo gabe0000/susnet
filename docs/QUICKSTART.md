@@ -40,3 +40,16 @@ df -h / /data
 RID=$(date +%s)-$RANDOM
 sudo docker exec -i susnet-next-mosquitto sh -lc "mosquitto_pub -h meshbox -p 1883 -t susnet/agent/query -m '{"request_id":"$RID","sender":"!9e77f1a0","text":"who are you and what can you do for mesh ops?"}'"
 ```
+
+
+## 7) Simplest direct CLI (recommended)
+```bash
+joe "traffic load summary please"
+joe "who are you and what can you do?"
+joe --chat
+```
+
+Notes:
+- `joe` is a symlink to `/home/codex/joe-cabot-lite/ask_joe.py`.
+- Defaults: broker `100.124.168.35`, timeout `25s`, retries `2`.
+- Override sender if needed: `joe --sender "!<nodeid>" "your question"`.

@@ -9,3 +9,6 @@
 - Extended Joe Cabot query handling for conversational prompts beyond fixed summary intents.
 - Added local-model best-effort chat path with bounded fallback replies for reliability.
 - Kept action scope in safe lightweight mode and RF-size output limits.
+
+## 2026-02-22
+- Added one-command direct CLI for Joe Cabot over MQTT (`joe`, `ask-joe`) with chat mode and retry defaults.
