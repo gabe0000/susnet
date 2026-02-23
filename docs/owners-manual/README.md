@@ -13,6 +13,8 @@
   - `openclaw_openclaw-gateway_1` (OpenClaw gateway)
   - `openclaw-ollama` (local model backend)
   - `joe-cabot-lite.service` (lightweight MQTT consumer/responder)
+  - Conversational mode: dedicated-channel chat support with bounded RF-size responses
+  - Fallback model: local rule-based reply when local LLM response does not arrive within timeout budget
   - `susnet-next-mosquitto` (broker)
   - `susnet-next-nodered` (ops automation)
   - `susnet-core-api` (core API)
@@ -47,7 +49,7 @@
 - Canonical architecture repo:
   - `https://github.com/gabe0000/resevoir-pis`
 
-- Last validated: `2026-02-22 23:30 UTC`
+- Last validated: `2026-02-23 00:02 UTC`
 - Validator: `scripts/validate-docs.sh v1`
 
 ## Definition of Done

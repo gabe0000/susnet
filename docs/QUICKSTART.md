@@ -33,3 +33,10 @@ df -h / /data
 ## 5) OpenClaw endpoint over Tailscale
 - Primary endpoint: `susnet:18789`
 - Internally proxied to host-local `localhost:28789` via `tailscale serve`.
+
+
+## 6) Conversational test query
+```bash
+RID=$(date +%s)-$RANDOM
+sudo docker exec -i susnet-next-mosquitto sh -lc "mosquitto_pub -h meshbox -p 1883 -t susnet/agent/query -m '{"request_id":"$RID","sender":"!9e77f1a0","text":"who are you and what can you do for mesh ops?"}'"
+```

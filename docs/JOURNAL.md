@@ -30,3 +30,26 @@
 - Open Risks / Follow-ups:
   - Move heavy raw/log retention paths to `/data` in a dedicated migration wave.
   - Add robust retry wrapper for intermittent package-download timeouts.
+
+
+## RP-20260222-003
+- Date/Time: 2026-02-22 19:02 EST
+- Context:
+  - Mr. Pink dedicated-channel behavior needed stronger conversational handling and not just fixed utility replies.
+- Decision:
+  - Expand Joe Cabot reply logic to support lightweight conversational prompts while preserving strict bounded-output policy.
+- Implementation:
+  - Updated `/home/codex/joe-cabot-lite/joe_cabot_lite.py` with:
+    - broker query handling for richer conversational prompts
+    - local-model best-effort generation path
+    - deterministic local conversational fallback templates
+    - broad-request refusal guardrails retained
+  - Restarted `joe-cabot-lite.service` after syntax validation.
+- Failure(s) / Incident(s):
+  - Local LLM HTTP path can exceed timeout budget under load, triggering fallback responses.
+- Verification:
+  - MQTT query/reply tests returned contextual conversational text for greeting and identity prompts.
+  - Utility intents (traffic summary) remained functional.
+- Open Risks / Follow-ups:
+  - Tune model timeout/latency tradeoff after live RF testing.
+  - Optional future optimization: persistent local model endpoint with faster first-token behavior.
