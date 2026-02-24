@@ -42,6 +42,11 @@
   - `meshbox/agent/events/health`
   - `meshbox/agent/events/nodes`
 
+- MeshBox stock MQTT listener:
+  - broker: `100.124.168.35`
+  - listener: `1884`
+  - auth required with ACL scope `msh/#`
+
 - Front-desk timing defaults:
   - ack timeout `7s`
   - response timeout `30s`
@@ -55,7 +60,7 @@
 - Canonical architecture repo:
   - `https://github.com/gabe0000/resevoir-pis`
 
-- Last validated: `2026-02-24 14:28 UTC`
+- Last validated: `2026-02-24 21:31 UTC`
 - Validator: `scripts/validate-docs.sh v1`
 
 ## Definition of Done

@@ -134,3 +134,19 @@
   - Runtime answered direct and escalated validation queries after deploy.
 - Open Risks / Follow-ups:
   - Add CI lint/test hooks for `susnet-next/services/joe-cabot-lite/` in a later wave.
+
+## RP-20260224-004
+- Date/Time: 2026-02-24 21:31 UTC
+- Context:
+  - MeshBox added stock-client MQTT onboarding path and Susnet docs needed cross-repo contract visibility.
+- Decision:
+  - Record the MeshBox stock listener contract in Susnet owner docs for operator clarity.
+- Implementation:
+  - Added listener reference (`100.124.168.35:1884`) and scope (`msh/#`) in owner manual.
+  - Added logbook/changelog references.
+- Failure(s) / Incident(s):
+  - None.
+- Verification:
+  - MeshBox listener active with auth on `1884`.
+- Open Risks / Follow-ups:
+  - Add TLS listener for untrusted network paths if required.

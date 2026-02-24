@@ -27,3 +27,6 @@
 - Added tracked Joe runtime source tree at `susnet-next/services/joe-cabot-lite/`.
 - Added `scripts/deploy-joe-cabot-lite.sh` to sync tracked source into `/home/codex/joe-cabot-lite` with compile and service restart checks.
 - Closed runtime provenance gap by documenting source-of-truth and deploy path in owner manual and quickstart.
+
+## 2026-02-24
+- Synced control-plane docs with MeshBox stock MQTT onboarding contract: dedicated auth listener `1884` scoped to `msh/#`.
