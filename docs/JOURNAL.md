@@ -73,3 +73,21 @@
   - `joe "status"` returned online snapshot.
 - Open Risks / Follow-ups:
   - If model latency rises, tune `--timeout` upward for direct CLI sessions.
+
+## RP-20260224-001
+- Date/Time: 2026-02-24 14:10 EST
+- Context:
+  - MeshBox front-desk refactor introduced lifecycle topics and timeout semantics that must be mirrored in Susnet control-plane documentation.
+- Decision:
+  - Align Susnet docs and control contract with Mr Pink and Joe deterministic lifecycle model.
+- Implementation:
+  - Updated owner manual canonical state with full Joe lifecycle topic set.
+  - Recorded front-desk timing defaults and escalation semantics.
+  - Added logbook and changelog entries for cross-repo traceability.
+- Failure(s) / Incident(s):
+  - No runtime incident during documentation sync.
+- Verification:
+  - Joe service active and subscribed to `susnet/agent/query` and `susnet/agent/control`.
+  - Recent lifecycle tests observed ack/progress/reply and cancellation states on broker.
+- Open Risks / Follow-ups:
+  - Track runtime source in versioned repo path instead of host-only `/home/codex/joe-cabot-lite`.

@@ -12,3 +12,8 @@
 
 ## 2026-02-22
 - Added one-command direct CLI for Joe Cabot over MQTT (`joe`, `ask-joe`) with chat mode and retry defaults.
+
+## 2026-02-24
+- Added front-desk control lifecycle alignment with MeshBox: `ack`, `progress`, `control`, `error`, and `dlq` topics.
+- Documented deterministic timeout semantics used by Mr Pink escalations: unreachable vs busy timeout classification.
+- Synced owner manual to current control-plane contract and timing defaults.

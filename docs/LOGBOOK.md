@@ -5,3 +5,5 @@
 - 2026-02-22: Added RP-20260222-003 conversational expansion for Joe Cabot with bounded fallback behavior.
 
 - 2026-02-22: Added RP-20260222-004 direct CLI wrapper (`joe` / `ask-joe`) for one-command SSH interaction.
+
+- 2026-02-24: Added RP-20260224-001 front-desk lifecycle contract alignment for Joe Cabot control plane and timeout classification interoperability with MeshBox.
