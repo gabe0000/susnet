@@ -91,3 +91,23 @@
   - Recent lifecycle tests observed ack/progress/reply and cancellation states on broker.
 - Open Risks / Follow-ups:
   - Track runtime source in versioned repo path instead of host-only `/home/codex/joe-cabot-lite`.
+
+## RP-20260224-002
+- Date/Time: 2026-02-24 16:03 EST
+- Context:
+  - A user-visible wrong arithmetic answer (`2+2` -> `8`) was observed during front-desk validation and treated as a high-priority reliability defect.
+- Decision:
+  - Add deterministic correctness guardrail for simple arithmetic and remove upstream metadata noise from query text before intent processing.
+- Implementation:
+  - Updated `/home/codex/joe-cabot-lite/joe_cabot_lite.py` runtime with:
+    - `_extract_user_request()` to strip appended `RF output constraints` metadata from edge escalations.
+    - `_safe_arithmetic_reply()` for deterministic handling of simple numeric expressions.
+    - model temperature changed to `0.0` for lower variance on short factual replies.
+  - Restarted `joe-cabot-lite.service` and revalidated direct and edge-escalated query paths.
+- Failure(s) / Incident(s):
+  - Root cause was not duplicate message processing; it was a combination of model variance and un-sanitized escalated prompt text.
+- Verification:
+  - Direct CLI repeated probes returned stable `4` responses.
+  - MeshBox->Joe escalated path returned `4` with `status=reply` and sub-second processing for arithmetic prompt.
+- Open Risks / Follow-ups:
+  - Runtime source currently lives in host path outside repo tracking; migrate runtime source to versioned repo path for stronger change control.
