@@ -17,6 +17,11 @@
   - `susnet-next-nodered` ops automation
   - `susnet-core-api` core API
 
+- Joe runtime source-of-truth:
+  - tracked path: `susnet-next/services/joe-cabot-lite/`
+  - deployed path: `/home/codex/joe-cabot-lite`
+  - deployment command: `./scripts/deploy-joe-cabot-lite.sh`
+
 - OpenClaw exposure model:
   - Docker host publish on `28789` to container `18789`
   - Tailscale TCP serve publishes `18789` to `localhost:28789`
@@ -50,7 +55,7 @@
 - Canonical architecture repo:
   - `https://github.com/gabe0000/resevoir-pis`
 
-- Last validated: `2026-02-24 14:10 UTC`
+- Last validated: `2026-02-24 14:28 UTC`
 - Validator: `scripts/validate-docs.sh v1`
 
 ## Definition of Done

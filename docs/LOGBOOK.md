@@ -9,3 +9,5 @@
 - 2026-02-24: Added RP-20260224-001 front-desk lifecycle contract alignment for Joe Cabot control plane and timeout classification interoperability with MeshBox.
 
 - 2026-02-24: Added RP-20260224-002 runtime guardrail for simple arithmetic correctness and sanitized upstream query handling.
+
+- 2026-02-24: Added RP-20260224-003 tracked Joe source + deploy workflow; runtime now synced from repository source.

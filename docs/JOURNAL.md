@@ -111,3 +111,26 @@
   - MeshBox->Joe escalated path returned `4` with `status=reply` and sub-second processing for arithmetic prompt.
 - Open Risks / Follow-ups:
   - Runtime source currently lives in host path outside repo tracking; migrate runtime source to versioned repo path for stronger change control.
+
+## RP-20260224-003
+- Date/Time: 2026-02-24 14:28 EST
+- Context:
+  - Runtime source provenance risk remained because Joe service code lived only in `/home/codex/joe-cabot-lite`.
+- Decision:
+  - Make repository source the canonical origin and deploy runtime by explicit sync workflow.
+- Implementation:
+  - Added tracked runtime source at `susnet-next/services/joe-cabot-lite/` with `joe_cabot_lite.py`, `ask_joe.py`, and dependency files.
+  - Added `scripts/deploy-joe-cabot-lite.sh`:
+    - syncs source to `/home/codex/joe-cabot-lite`
+    - ensures venv and deps
+    - compiles python modules
+    - restarts `joe-cabot-lite.service`
+    - writes `/home/codex/joe-cabot-lite/DEPLOYED_FROM_REPO` marker
+  - Updated owner manual and quickstart with new source-of-truth/deploy contract.
+- Failure(s) / Incident(s):
+  - No runtime outage during migration to tracked source workflow.
+- Verification:
+  - Deploy script completed successfully and service remained active.
+  - Runtime answered direct and escalated validation queries after deploy.
+- Open Risks / Follow-ups:
+  - Add CI lint/test hooks for `susnet-next/services/joe-cabot-lite/` in a later wave.

@@ -1,0 +1,18 @@
+services:
+  joe-cabot-lite:
+    build: .
+    container_name: joe-cabot-lite
+    restart: unless-stopped
+    environment:
+      BROKER_HOST: "100.124.168.35"
+      BROKER_PORT: "1883"
+      QUERY_TOPIC: "susnet/agent/query"
+      REPLY_TOPIC: "susnet/agent/reply"
+      HEALTH_TOPIC: "susnet/agent/events/health"
+      STATE_PATH: "/data/state/agents/joe-cabot/state.json"
+      RF_MAX_CHUNKS: "5"
+      RF_CHUNK_CHARS: "110"
+      MAX_NODES_DETAIL: "7"
+      SNAPSHOT_SECONDS: "30"
+    volumes:
+      - /data:/data
