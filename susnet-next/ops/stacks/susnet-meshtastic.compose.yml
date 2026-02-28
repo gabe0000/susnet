@@ -1,0 +1,38 @@
+version: "3.8"
+
+services:
+  module-meshtastic:
+    image: tiangolo/uvicorn-gunicorn-fastapi:python3.11
+    container_name: susnet-module-meshtastic
+    restart: unless-stopped
+    volumes:
+      - /home/gabe0000/susnet-next/services/module-meshtastic/app:/app
+      - /home/gabe0000/susnet-next/data/meshtastic:/data
+    environment:
+      - MODULE_NAME=main
+      - VARIABLE_NAME=app
+      - APP_MODULE=main:app
+      - PORT=8080
+      - MESHTASTIC_HOST=${MESHTASTIC_HOST:-100.124.168.35}
+      - MESHTASTIC_TCP_PORT=${MESHTASTIC_TCP_PORT:-4403}
+      - MESHTASTIC_SERIAL_PORT=${MESHTASTIC_SERIAL_PORT:-/dev/ttyUSB0}
+      - MESH_MAX_ITEMS=${MESH_MAX_ITEMS:-500}
+      - MESH_DATA_DIR=/data
+      - MESHTASTIC_ADMIN_ENABLED=${MESHTASTIC_ADMIN_ENABLED:-false}
+      - MESH_MQTT_HOST=${MESH_MQTT_HOST:-100.90.138.26}
+      - MESH_MQTT_PORT=${MESH_MQTT_PORT:-1883}
+      - MESH_MQTT_USER=${MESH_MQTT_USER:-}
+      - MESH_MQTT_PASS=${MESH_MQTT_PASS:-}
+      - MESH_MQTT_TLS=${MESH_MQTT_TLS:-false}
+      - MESH_MQTT_QOS=${MESH_MQTT_QOS:-0}
+      - MESH_MQTT_AUTOCONNECT=${MESH_MQTT_AUTOCONNECT:-false}
+      - MESH_MQTT_DOWNLINK_TOPIC=${MESH_MQTT_DOWNLINK_TOPIC:-msh/downlink}
+      - WEB_CONCURRENCY=1
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - susnet_next
+
+networks:
+  susnet_next:
+    external: true
