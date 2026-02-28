@@ -25,3 +25,16 @@ Stabilization stance:
 - keep channel index as transport metadata only
 - preserve lifecycle ordering and bounded pacing
 - continue migration from polling-heavy observability to event-driven delivery where practical
+
+Second runtime stabilization pass (2026-02-28, later wave):
+- Identified meshtastic hotspot inside node snapshot/update path:
+  - node records were rewritten (and persisted) on repeated snapshots even when data was unchanged
+  - `/nodes` endpoint forced live snapshots on every read
+- Applied targeted refactor in `services/module-meshtastic/app/main.py`:
+  - preserve existing `last_heard` unless explicitly updated by real traffic events
+  - write `nodes.json` only when a node record actually changes
+  - add optional `refresh` flag on `/nodes` (default cached read)
+  - rate-limit connected-state snapshots via `MESH_NODE_SNAPSHOT_SECONDS` (default 15s)
+- Operational note:
+  - container restart exposed brittle serial device-path pinning when that by-id path is absent
+  - temporary placeholder path was used to restore service while TCP path remains primary
