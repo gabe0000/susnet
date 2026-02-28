@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import os
+import threading
+import time
 from typing import Any, Dict, Optional
 
 import httpx
@@ -13,6 +15,22 @@ APRS_API_URL = os.getenv("APRS_API_URL", "http://module-aprs:8080")
 MESH_API_URL = os.getenv("MESH_API_URL", "http://module-meshtastic:8080")
 V1_BASE_URL = os.getenv("V1_BASE_URL", "http://host.docker.internal:8088")
 TIMEOUT = float(os.getenv("HTTP_TIMEOUT", "5"))
+MESH_CACHE_TTL_SECONDS = float(os.getenv("MESH_CACHE_TTL_SECONDS", "5.0"))
+MESH_CACHE_TTL_OVERRIDES = {
+    "/health": float(os.getenv("MESH_CACHE_TTL_HEALTH_SECONDS", "5.0")),
+    "/nodes": float(os.getenv("MESH_CACHE_TTL_NODES_SECONDS", "12.0")),
+    "/messages": float(os.getenv("MESH_CACHE_TTL_MESSAGES_SECONDS", "6.0")),
+    "/telemetry": float(os.getenv("MESH_CACHE_TTL_TELEMETRY_SECONDS", "6.0")),
+    "/mqtt/status": float(os.getenv("MESH_CACHE_TTL_MQTT_STATUS_SECONDS", "6.0")),
+    "/mqtt/messages": float(os.getenv("MESH_CACHE_TTL_MQTT_MESSAGES_SECONDS", "6.0")),
+}
+_MESH_CACHE: Dict[str, Dict[str, Any]] = {}
+_MESH_CACHE_LOCK = threading.Lock()
+_MESH_INFLIGHT: Dict[str, threading.Event] = {}
+_MESH_INFLIGHT_LOCK = threading.Lock()
+
+# Reuse pooled connections instead of building a new socket for each poll.
+_HTTP_CLIENT = httpx.Client()
 
 app = FastAPI(title="susnet-core-api", version="0.2.0")
 
@@ -28,19 +46,106 @@ def _safe_json(resp: httpx.Response) -> Any:
         return {"raw": resp.text}
 
 
-def _get(
+def _mesh_cache_key(path: str, params: Optional[Dict[str, Any]]) -> str:
+    if not params:
+        return path
+    pairs = tuple(sorted((str(k), str(v)) for k, v in params.items()))
+    return f"{path}?{pairs}"
+
+
+def _mesh_cache_get(path: str, params: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    ttl = max(0.0, float(MESH_CACHE_TTL_OVERRIDES.get(path, MESH_CACHE_TTL_SECONDS)))
+    if ttl <= 0:
+        return None
+    key = _mesh_cache_key(path, params)
+    now = time.monotonic()
+    with _MESH_CACHE_LOCK:
+        entry = _MESH_CACHE.get(key)
+        if not entry:
+            return None
+        if float(entry.get("expires_at", 0.0)) <= now:
+            _MESH_CACHE.pop(key, None)
+            return None
+        return entry.get("value")
+
+
+def _mesh_cache_put(path: str, params: Optional[Dict[str, Any]], value: Dict[str, Any]) -> None:
+    ttl = max(0.0, float(MESH_CACHE_TTL_OVERRIDES.get(path, MESH_CACHE_TTL_SECONDS)))
+    if ttl <= 0:
+        return
+    key = _mesh_cache_key(path, params)
+    with _MESH_CACHE_LOCK:
+        _MESH_CACHE[key] = {"expires_at": time.monotonic() + ttl, "value": value}
+
+
+def _mesh_cache_clear() -> None:
+    with _MESH_CACHE_LOCK:
+        _MESH_CACHE.clear()
+
+
+def _http_get(
     url: str,
     path: str,
     params: Optional[Dict[str, Any]] = None,
     timeout: Optional[float] = None,
 ) -> Dict[str, Any]:
     try:
-        resp = httpx.get(f"{url}{path}", params=params, timeout=timeout or TIMEOUT)
+        resp = _HTTP_CLIENT.get(f"{url}{path}", params=params, timeout=timeout or TIMEOUT)
     except Exception as exc:
         return {"ok": False, "errors": [str(exc)], "data": None}
     if resp.status_code >= 400:
         return {"ok": False, "errors": [f"{resp.status_code}: {resp.text[:200]}"]}
     return _safe_json(resp)
+
+
+def _mesh_get_singleflight(
+    path: str,
+    params: Optional[Dict[str, Any]],
+    timeout: Optional[float] = None,
+) -> Dict[str, Any]:
+    key = _mesh_cache_key(path, params)
+    cached = _mesh_cache_get(path, params)
+    if isinstance(cached, dict):
+        return cached
+
+    owner = False
+    with _MESH_INFLIGHT_LOCK:
+        event = _MESH_INFLIGHT.get(key)
+        if event is None:
+            event = threading.Event()
+            _MESH_INFLIGHT[key] = event
+            owner = True
+
+    if owner:
+        try:
+            payload = _http_get(MESH_API_URL, path, params=params, timeout=timeout)
+            if isinstance(payload, dict) and payload.get("ok"):
+                _mesh_cache_put(path, params, payload)
+            return payload
+        finally:
+            with _MESH_INFLIGHT_LOCK:
+                waiter = _MESH_INFLIGHT.pop(key, None)
+                if waiter is not None:
+                    waiter.set()
+
+    wait_timeout = max(0.2, float(timeout or TIMEOUT))
+    event.wait(wait_timeout)
+    cached = _mesh_cache_get(path, params)
+    if isinstance(cached, dict):
+        return cached
+    return _http_get(MESH_API_URL, path, params=params, timeout=timeout)
+
+
+def _get(
+    url: str,
+    path: str,
+    params: Optional[Dict[str, Any]] = None,
+    timeout: Optional[float] = None,
+) -> Dict[str, Any]:
+    use_mesh_cache = bool(url == MESH_API_URL and path in MESH_CACHE_TTL_OVERRIDES)
+    if use_mesh_cache:
+        return _mesh_get_singleflight(path, params=params, timeout=timeout)
+    return _http_get(url, path, params=params, timeout=timeout)
 
 
 def _post(
@@ -50,12 +155,16 @@ def _post(
     timeout: Optional[float] = None,
 ) -> Dict[str, Any]:
     try:
-        resp = httpx.post(f"{url}{path}", json=payload, timeout=timeout or TIMEOUT)
+        resp = _HTTP_CLIENT.post(f"{url}{path}", json=payload, timeout=timeout or TIMEOUT)
     except Exception as exc:
         return {"ok": False, "errors": [str(exc)], "data": None}
     if resp.status_code >= 400:
         return {"ok": False, "errors": [f"{resp.status_code}: {resp.text[:200]}"]}
-    return _safe_json(resp)
+
+    payload_out = _safe_json(resp)
+    if url == MESH_API_URL:
+        _mesh_cache_clear()
+    return payload_out
 
 
 def _unwrap_or_error(module_resp: Dict[str, Any]) -> Dict[str, Any]:
@@ -420,3 +529,11 @@ def mesh_mqtt_downlink_sendtext(payload: Dict[str, Any] = Body(default={})):
 @app.exception_handler(Exception)
 async def unhandled_exception(_, exc: Exception):
     return JSONResponse(status_code=500, content=_wrap_err(str(exc)))
+
+
+@app.on_event("shutdown")
+def _close_http_client():
+    try:
+        _HTTP_CLIENT.close()
+    except Exception:
+        pass

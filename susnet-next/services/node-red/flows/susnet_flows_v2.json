@@ -205,13 +205,13 @@
     "id": "inj_health",
     "type": "inject",
     "z": "f_runtime",
-    "name": "Poll health (15s)",
+    "name": "Poll health (30s)",
     "props": [
       {
         "p": "payload"
       }
     ],
-    "repeat": "15",
+    "repeat": "30",
     "once": true,
     "onceDelay": "2",
     "topic": "",
@@ -287,13 +287,13 @@
     "id": "inj_services",
     "type": "inject",
     "z": "f_runtime",
-    "name": "Poll services (15s)",
+    "name": "Poll services (30s)",
     "props": [
       {
         "p": "payload"
       }
     ],
-    "repeat": "15",
+    "repeat": "30",
     "once": true,
     "onceDelay": "3",
     "topic": "",
@@ -816,13 +816,13 @@
     "id": "inj_mesh_msg",
     "type": "inject",
     "z": "f_runtime",
-    "name": "Poll Mesh messages (15s)",
+    "name": "Poll Mesh messages (30s)",
     "props": [
       {
         "p": "payload"
       }
     ],
-    "repeat": "15",
+    "repeat": "30",
     "once": true,
     "onceDelay": "6",
     "topic": "",
@@ -898,13 +898,13 @@
     "id": "inj_mesh_tel",
     "type": "inject",
     "z": "f_runtime",
-    "name": "Poll Mesh telemetry (30s)",
+    "name": "Poll Mesh telemetry (45s)",
     "props": [
       {
         "p": "payload"
       }
     ],
-    "repeat": "30",
+    "repeat": "45",
     "once": true,
     "onceDelay": "6",
     "topic": "",
@@ -1143,13 +1143,13 @@
     "id": "inj_mesh_nodes_v2",
     "type": "inject",
     "z": "f_runtime",
-    "name": "Poll Mesh nodes (20s)",
+    "name": "Poll Mesh nodes (45s)",
     "props": [
       {
         "p": "payload"
       }
     ],
-    "repeat": "20",
+    "repeat": "45",
     "once": true,
     "onceDelay": "6",
     "topic": "",
@@ -1225,13 +1225,13 @@
     "id": "inj_mesh_mqtt_status_v2",
     "type": "inject",
     "z": "f_runtime",
-    "name": "Poll Mesh MQTT status (20s)",
+    "name": "Poll Mesh MQTT status (45s)",
     "props": [
       {
         "p": "payload"
       }
     ],
-    "repeat": "20",
+    "repeat": "45",
     "once": true,
     "onceDelay": "7",
     "topic": "",

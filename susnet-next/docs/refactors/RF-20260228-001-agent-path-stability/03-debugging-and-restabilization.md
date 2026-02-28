@@ -5,7 +5,23 @@ Key recurring issues tracked:
 2. callback/path timing causing intermittent relay behavior
 3. poll-heavy observability path causing burst load noise
 
-Stabilization action:
-- treat channel index only as transport metadata
+Runtime stabilization actions applied (2026-02-28):
+- Upgraded services/core-api/app/main.py mesh read path with:
+  - shared pooled HTTP client for backend calls
+  - singleflight cache-miss coalescing for cacheable Meshtastic endpoints
+  - safer cache TTL defaults tuned for dashboard polling
+- Reduced Node-RED dashboard poll inject rates in live and tracked flow files:
+  - health/services: 15s -> 30s
+  - mesh messages: 15s -> 30s
+  - mesh telemetry: 30s -> 45s
+  - mesh nodes: 20s -> 45s
+  - mesh mqtt status: 20s -> 45s
+
+Measured impact (module-meshtastic requests from core-api over 2-minute sample):
+- before: health 8, messages 8, nodes 6, mqtt_status 6, telemetry 4
+- after:  health 4, messages 4, nodes 3, mqtt_status 3, telemetry 3
+
+Stabilization stance:
+- keep channel index as transport metadata only
 - preserve lifecycle ordering and bounded pacing
-- document poll-to-event migration as follow-up
+- continue migration from polling-heavy observability to event-driven delivery where practical
