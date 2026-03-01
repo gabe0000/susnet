@@ -14,8 +14,14 @@ required=(
   docs/architecture/surfaces/edge-bridge-mr-pink.md
   docs/architecture/surfaces/control-runtime-joe-openclaw.md
   docs/architecture/surfaces/permission-gates.md
+  docs/architecture/resevoir-comms-hq-layout.md
+  docs/architecture/office-library-desk-contract.md
+  docs/architecture/containerization-boundary-map.md
+  docs/architecture/storage-governance.md
   docs/contracts/stock-meshtastic-mqtt-contract.md
   docs/contracts/custom-meshbox-susnet-agent-contract.md
+  docs/contracts/become-an-expert-contract.md
+  docs/ops/runbooks/library-memory-management.md
   docs/refactors/README.md
   docs/refactors/templates/refactor-entry.md
   docs/refactors/templates/restabilization-log.md
@@ -31,7 +37,12 @@ find docs/refactors -mindepth 1 -maxdepth 1 -type d ! -name templates | while re
   done
 done
 
+refactor_hq="docs/refactors/RF-20260301-002-resevoir-comms-hq-office-library-desk"
+grep -qi "Phase A: Baseline" "$refactor_hq/01-context-and-goals.md" || { echo "missing baseline marker in $refactor_hq"; exit 1; }
+grep -qi "Phase D: Final Verified State" "$refactor_hq/04-verification-and-known-risks.md" || { echo "missing final-state marker in $refactor_hq"; exit 1; }
+
 grep -qi "private-first" docs/DOCS_CONTRACT.md || { echo "missing private-first rule"; exit 1; }
 grep -q "must never be used for authorization" docs/architecture/surfaces/permission-gates.md || { echo "missing channel-index anti-pattern"; exit 1; }
+grep -q "become_an_expert" docs/contracts/become-an-expert-contract.md || { echo "missing become_an_expert intent"; exit 1; }
 
 echo "validate-docs-consistency.sh: OK"
