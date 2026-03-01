@@ -1,0 +1,82 @@
+services:
+  real-joe-redis:
+    image: redis:7-alpine
+    container_name: real-joe-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec"]
+    volumes:
+      - /data/Joes-Office/redis:/data
+
+  real-joe:
+    build: .
+    container_name: real-joe
+    restart: unless-stopped
+    depends_on:
+      - real-joe-redis
+    environment:
+      BROKER_HOST: "100.90.138.26"
+      BROKER_PORT: "1883"
+      BROKER_USER: "joe_agent"
+      BROKER_PASSWORD: "${BROKER_PASSWORD}"
+      MQTT_CLIENT_ID: "real-joe"
+      QUERY_TOPIC: "susnet/agent/query"
+      REPLY_TOPIC: "susnet/agent/reply"
+      ACK_TOPIC: "susnet/agent/ack"
+      PROGRESS_TOPIC: "susnet/agent/progress"
+      CONTROL_TOPIC: "susnet/agent/control"
+      ERROR_TOPIC: "susnet/agent/error"
+      DLQ_TOPIC: "susnet/agent/dlq"
+      HEALTH_TOPIC: "susnet/agent/events/health"
+      POLICY_EVENT_TOPIC: "susnet/agent/events/policy"
+      REDIS_URL: "redis://real-joe-redis:6379/0"
+      REDIS_PREFIX: "real-joe"
+      STATE_PATH: "/data/Joes-Office/real-joe/state.json"
+      OPENCLAW_ENABLED: "true"
+      OPENCLAW_GATEWAY_CONTAINER: "openclaw_openclaw-gateway_1"
+      OPENCLAW_AGENT_TIMEOUT_SECONDS: "8"
+      OPENCLAW_WAIT_TIMEOUT_MS: "8000"
+      OPENCLAW_POLL_COUNT: "1"
+      OPENCLAW_CALL_TIMEOUT_SECONDS: "10"
+      OPENCLAW_CIRCUIT_FAIL_THRESHOLD: "1"
+      OPENCLAW_CIRCUIT_OPEN_SECONDS: "300"
+      OLLAMA_DIRECT_ENABLED: "true"
+      OLLAMA_CONTAINER: "openclaw-ollama"
+      OLLAMA_MODEL: "qwen2.5:0.5b"
+      OLLAMA_TIMEOUT_SECONDS: "24"
+      OLLAMA_IP_CACHE_SECONDS: "120"
+      GLOBAL_PAUSED_DEFAULT: "false"
+      TOOLS_PAUSED_DEFAULT: "false"
+      ESCALATION_PAUSED_DEFAULT: "false"
+      ENABLE_SOFT_SHUTDOWN: "false"
+      SOFT_SHUTDOWN_COMMAND: ""
+      ROLLOUT_MODE: "dedicated"
+      CANARY_PERCENT: "10"
+      PILOT_CHANNEL_FINGERPRINTS: "${PILOT_CHANNEL_FINGERPRINTS}"
+      RF_MAX_CHUNKS: "5"
+      RF_CHUNK_CHARS: "110"
+      MIN_INTER_CHUNK_DELAY_SECONDS: "1.0"
+      INITIAL_RESPONSE_DELAY_SECONDS: "0.0"
+      SNAPSHOT_SECONDS: "20"
+      STILL_WORKING_INTERVAL_SECONDS: "8"
+      OPERATOR_TOKEN: "${OPERATOR_TOKEN}"
+      HQ_ROOT: "/data/Resevoir-Comms-HQ"
+      HQ_LIBRARY_ROOT: "/data/Resevoir-Comms-HQ/Library"
+      HQ_OFFICES_ROOT: "/data/Resevoir-Comms-HQ/Offices"
+      HQ_DESKS_ROOT: "/data/Resevoir-Comms-HQ/Desks"
+      EXPERT_AGENT_DEFAULT: "Mr-Pink"
+      EXPERT_ALLOWLIST_NODE_IDS: "${EXPERT_ALLOWLIST_NODE_IDS}"
+      EXPERT_BUDGET_BYTES: "524288000"
+      LIBRARY_CAP_BYTES: "21474836480"
+      LIBRARY_THRESHOLD_BYTES: "5368709120,10737418240,16106127360"
+      EXPERT_FLOW_TTL_SECONDS: "86400"
+    volumes:
+      - /data:/data
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /usr/bin/docker:/usr/bin/docker:ro
+    networks:
+      - default
+      - openclaw_default
+
+networks:
+  openclaw_default:
+    external: true
