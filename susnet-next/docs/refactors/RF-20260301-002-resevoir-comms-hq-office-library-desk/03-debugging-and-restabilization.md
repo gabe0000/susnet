@@ -17,3 +17,8 @@
 1. Corpus growth under repeated expert ingests.
 2. Cooldown effectiveness for on-demand expert refresh.
 3. Consistency between private canonical docs and public projection.
+
+### 2026-03-02 Docs-Only Checkpoint Addendum
+1. Captured current post-nightly operating posture in architecture docs (`system-map`, control-runtime surface).
+2. Recorded explicit detachment posture: base runtime remains serviceable without OpenClaw path.
+3. Marked this as a checkpoint sync wave prior to runtime cleanup to reduce private/public narrative drift.

@@ -18,3 +18,8 @@
 1. Execute runtime migration and container mount changes.
 2. Record post-runtime evidence in this refactor file set.
 3. Publish synchronized public projection updates.
+
+### 2026-03-02 Checkpoint Verification Addendum
+1. Updated architecture docs reflect current naming and runtime split (`custom-agent-gateway` primary).
+2. Refactor record now includes checkpoint addendum tied to docs-only synchronization.
+3. Update scope remained documentation-only with no runtime/config file edits.
