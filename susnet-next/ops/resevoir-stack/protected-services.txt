@@ -1,0 +1,7 @@
+module-allstar
+susnet-module-allstar
+susnet-core-api
+susnet-next-mosquitto
+susnet-module-meshtastic
+susnet-next-portainer
+tailscaled

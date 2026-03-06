@@ -1,0 +1,5 @@
+~/custom-agent-gateway-compose.yml
+~/susnet-next/services/custom-agent-gateway
+~/susnet-next/ops/resevoir-stack
+/data/Resevoir-Comms-HQ
+/data/Joes-Office
